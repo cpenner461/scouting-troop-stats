@@ -73,6 +73,12 @@ class ScoutingAPI:
             f"/advancements/v2/youth/{user_id}/meritBadges/{mb_id}/requirements"
         )
 
+    def get_youth_rank_requirements(self, user_id, rank_id):
+        """Auth endpoint: per-scout rank requirement completion."""
+        return self._request(
+            f"/advancements/v2/youth/{user_id}/ranks/{rank_id}/requirements"
+        )
+
     def get_leadership_history(self, user_id):
         return self._request(
             f"/advancements/youth/{user_id}/leadershipPositionHistory"

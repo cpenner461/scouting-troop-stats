@@ -25,6 +25,7 @@ from bsa_db.db import (
     store_leadership,
     store_youth_mb_requirements,
     store_youth_merit_badges,
+    store_youth_rank_requirements,
     store_youth_ranks,
     upsert_mb_requirements,
     upsert_ranks,
@@ -148,6 +149,8 @@ def cmd_sync_scouts(args):
     skip_reqs = getattr(args, "skip_reqs", False)
     # Cache MB requirement definitions to avoid re-fetching for multiple scouts
     mb_defn_cache = {}  # mb_id -> version_id (already stored)
+    # Cache rank requirement definitions to avoid re-fetching
+    rank_defn_cache = set()  # rank_ids already stored
 
     print(f"Syncing {len(scouts)} scouts...")
     for scout in scouts:
@@ -156,12 +159,42 @@ def cmd_sync_scouts(args):
         label = name or uid
         print(f"  {label}...", end=" ", flush=True)
 
+        ranks_data = None
         try:
             ranks_data = api.get_youth_ranks(uid)
             count = store_youth_ranks(conn, uid, ranks_data)
             print(f"ranks({count})", end=" ")
         except ScoutingAPIError as e:
             print(f"[ranks error: {e.status_code}]", end=" ")
+
+        # Fetch per-requirement completion for in-progress ranks
+        if not skip_reqs and ranks_data:
+            in_progress_ranks = []
+            for prog in ranks_data.get("program") or []:
+                if prog.get("programId") != SCOUTS_BSA_PROGRAM_ID:
+                    continue
+                for rank in prog.get("ranks") or []:
+                    if not (rank.get("dateEarned") or rank.get("dateCompleted")):
+                        rank_id = rank.get("id")
+                        if rank_id:
+                            in_progress_ranks.append(int(rank_id))
+            rank_req_count = 0
+            for rank_id in in_progress_ranks:
+                try:
+                    # Cache rank requirement definitions
+                    if rank_id not in rank_defn_cache:
+                        defn = api.get_rank_requirements(rank_id)
+                        upsert_requirements(conn, rank_id, defn)
+                        rank_defn_cache.add(rank_id)
+
+                    youth_reqs = api.get_youth_rank_requirements(uid, rank_id)
+                    rank_req_count += store_youth_rank_requirements(
+                        conn, uid, rank_id, youth_reqs
+                    )
+                except ScoutingAPIError:
+                    pass
+            if rank_req_count:
+                print(f"rank_reqs({rank_req_count})", end=" ")
 
         mb_data = None
         try:
@@ -241,6 +274,45 @@ def cmd_discover(args):
             print(f"OK\n{preview}\n")
         except ScoutingAPIError as e:
             print(f"{e.status_code}: {e.message[:200]}")
+
+    # Probe rank requirement endpoints using a sample in-progress rank
+    print("\n--- Rank Requirement Endpoint Probing ---\n")
+    sample_rank = conn.execute(
+        "SELECT raw_json FROM scout_advancements "
+        "WHERE scout_user_id = ? AND advancement_type = 'rank' "
+        "AND status = 'in_progress' LIMIT 1",
+        (uid,),
+    ).fetchone()
+    if not sample_rank:
+        sample_rank = conn.execute(
+            "SELECT raw_json FROM scout_advancements "
+            "WHERE advancement_type = 'rank' AND status = 'in_progress' LIMIT 1"
+        ).fetchone()
+
+    if sample_rank:
+        rank = json.loads(sample_rank["raw_json"])
+        rank_id = rank["id"]
+        rank_name = rank.get("name", "Unknown")
+        print(f"  Sample rank: {rank_name} (id={rank_id})\n")
+
+        rank_probes = [
+            (f"GET  /advancements/ranks/{rank_id}/requirements (public, definitions)",
+             f"/advancements/ranks/{rank_id}/requirements"),
+            (f"GET  /advancements/v2/youth/{uid}/ranks/{rank_id}/requirements (auth, per-scout)",
+             f"/advancements/v2/youth/{uid}/ranks/{rank_id}/requirements"),
+        ]
+        for label, path in rank_probes:
+            print(f"  {label}...", end=" ", flush=True)
+            try:
+                data = api._request(path)
+                preview = json.dumps(data, indent=2)
+                if len(preview) > 1000:
+                    preview = preview[:1000] + "\n  ... (truncated)"
+                print(f"OK\n{preview}\n")
+            except ScoutingAPIError as e:
+                print(f"{e.status_code}: {e.message[:200]}")
+    else:
+        print("  No in-progress ranks found to probe requirement endpoints.")
 
     # Probe MB requirement endpoints using a sample in-progress MB
     print("\n--- MB Requirement Endpoint Probing ---\n")

@@ -218,40 +218,60 @@ def upsert_ranks(conn, ranks_data):
 
 
 def upsert_requirements(conn, rank_id, requirements):
+    """Insert/update rank requirement definitions. Returns count.
+
+    Recursively walks nested children so all sub-requirements are stored.
+    """
     count = 0
-    for req in requirements:
-        parent_id = req.get("parentRequirementId")
-        parent_id = int(parent_id) if parent_id else None
 
-        def _int_or_none(val):
-            return int(val) if val else None
+    def _int_or_none(val):
+        return int(val) if val else None
 
-        conn.execute(
-            """INSERT OR REPLACE INTO requirements
-               (id, rank_id, parent_requirement_id, requirement_number,
-                list_number, short, name, required, children_required,
-                sort_order, eagle_mb_required, total_mb_required,
-                service_hours_required, months_since_last_rank, raw_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                int(req["id"]),
-                rank_id,
-                parent_id,
-                req.get("requirementNumber"),
-                req.get("listNumber"),
-                req.get("short"),
-                req.get("name"),
-                1 if str(req.get("required", "True")).lower() == "true" else 0,
-                _int_or_none(req.get("childrenRequired")),
-                req.get("sortOrder"),
-                _int_or_none(req.get("eagleMBRequired")),
-                _int_or_none(req.get("totalMBRequired")),
-                _int_or_none(req.get("serviceHoursRequired")),
-                _int_or_none(req.get("monthsSinceLastRankRequired")),
-                json.dumps(req),
-            ),
+    def _walk(reqs, parent_id=None):
+        nonlocal count
+        for req in reqs:
+            req_id = req.get("id")
+            if not req_id:
+                continue
+            req_id = int(req_id)
+            parent = int(parent_id) if parent_id else None
+            conn.execute(
+                """INSERT OR REPLACE INTO requirements
+                   (id, rank_id, parent_requirement_id, requirement_number,
+                    list_number, short, name, required, children_required,
+                    sort_order, eagle_mb_required, total_mb_required,
+                    service_hours_required, months_since_last_rank, raw_json)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    req_id,
+                    rank_id,
+                    parent,
+                    req.get("requirementNumber"),
+                    req.get("listNumber"),
+                    req.get("short"),
+                    req.get("name"),
+                    1 if str(req.get("required", "True")).lower() == "true" else 0,
+                    _int_or_none(req.get("childrenRequired")),
+                    req.get("sortOrder"),
+                    _int_or_none(req.get("eagleMBRequired")),
+                    _int_or_none(req.get("totalMBRequired")),
+                    _int_or_none(req.get("serviceHoursRequired")),
+                    _int_or_none(req.get("monthsSinceLastRankRequired")),
+                    json.dumps(req),
+                ),
+            )
+            count += 1
+            children = req.get("requirements") or req.get("children") or []
+            if children:
+                _walk(children, parent_id=req_id)
+
+    if isinstance(requirements, dict):
+        requirements = (
+            requirements.get("requirements")
+            or requirements.get("value")
+            or []
         )
-        count += 1
+    _walk(requirements)
     conn.commit()
     return count
 
@@ -505,6 +525,42 @@ def store_youth_mb_requirements(conn, user_id, mb_api_id, mb_version_id, require
                     date_completed,
                     json.dumps(req),
                 ),
+            )
+            count += 1
+            children = req.get("requirements") or req.get("children") or []
+            if children:
+                _walk(children)
+
+    if isinstance(requirements, dict):
+        requirements = (
+            requirements.get("requirements")
+            or requirements.get("value")
+            or []
+        )
+    _walk(requirements)
+    conn.commit()
+    return count
+
+
+def store_youth_rank_requirements(conn, user_id, rank_id, requirements):
+    """Store per-scout rank requirement completion. Returns count."""
+    count = 0
+
+    def _walk(reqs):
+        nonlocal count
+        for req in reqs:
+            req_id = req.get("id")
+            if not req_id:
+                continue
+            req_id = int(req_id)
+            date_completed = req.get("dateCompleted") or req.get("dateEarned")
+            completed = 1 if date_completed else 0
+            conn.execute(
+                """INSERT OR REPLACE INTO scout_requirement_completions
+                   (scout_user_id, requirement_id, rank_id,
+                    completed, date_completed)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (user_id, req_id, rank_id, completed, date_completed),
             )
             count += 1
             children = req.get("requirements") or req.get("children") or []
