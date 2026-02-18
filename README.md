@@ -1,4 +1,4 @@
-# BSA Troop Analytics
+# BSA Troop Stats
 
 A CLI tool for scoutmasters to download scout advancement data from the BSA API into a local SQLite database and run troop-wide queries. Figure out which merit badges and rank requirements the most scouts still need so you can plan troop meetings that benefit everyone.
 
@@ -7,13 +7,7 @@ A CLI tool for scoutmasters to download scout advancement data from the BSA API 
 - Python 3.10+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) for dependency and virtualenv management
 
-Install uv if you don't have it:
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-Then clone and set up:
+Install uv if you don't have it, then clone and set up:
 
 ```bash
 git clone <this-repo>
@@ -31,20 +25,32 @@ uv run bsa sync-ranks
 # 2. Import your troop roster from a Scoutbook CSV export
 uv run bsa import-roster roster.csv
 
-# 3. Set your API token and sync each scout's advancement data
-export BSA_TOKEN="eyJhbGciOi..."
+# 3. Authenticate and save your API token
+uv run bsa get-token
+
+# 4. Sync each scout's advancement data
 uv run bsa sync-scouts
 
-# 4. Run queries
+# 5. Run queries
 uv run bsa query plan --min-pct 40
 uv run bsa query summary
 ```
 
 ## Getting Your API Token
 
-The BSA API requires a JWT (JSON Web Token) to access per-scout advancement data. The easiest way to get one is from your browser while logged into Scoutbook or Internet Advancement.
+### Option A: `get-token` command (recommended)
 
-### Step-by-step: Browser Developer Tools
+The easiest way to get and save a token is to let the CLI do it:
+
+```bash
+uv run bsa get-token
+```
+
+This prompts for your `my.scouting.org` username and password, fetches a JWT, and saves it to `config.json`. The saved username is remembered for subsequent runs.
+
+### Option B: Browser Developer Tools
+
+If `get-token` doesn't work, you can grab a token manually from your browser while logged into Scoutbook or Internet Advancement.
 
 1. Open **Chrome** (or Firefox/Edge) and log in to [Scoutbook](https://scoutbook.scouting.org) or [Internet Advancement](https://advancements.scouting.org).
 2. Open **Developer Tools** (press `F12`, or right-click the page and choose "Inspect").
@@ -57,16 +63,16 @@ The BSA API requires a JWT (JSON Web Token) to access per-scout advancement data
    ```
 7. Copy the entire token (everything after `Bearer `).
 
-### Using the token
+Then supply it via environment variable or config file:
 
-**Option A: Environment variable** (recommended for one-off use)
+**Environment variable** (one-off use)
 
 ```bash
 export BSA_TOKEN="eyJhbGciOiJSUzI1NiIs..."
 uv run bsa sync-scouts
 ```
 
-**Option B: Config file** (persists across sessions)
+**Config file** (persists across sessions)
 
 Create a `config.json` in the project directory:
 
@@ -80,7 +86,7 @@ This file is gitignored and will not be committed.
 
 ### Token expiration
 
-BSA tokens expire (typically after a few hours). When `sync-scouts` starts returning `401` errors, grab a fresh token using the steps above.
+BSA tokens expire (typically after a few hours). When `sync-scouts` returns `401` errors, run `bsa get-token` again or grab a fresh token from the browser.
 
 ## Exporting Your Troop Roster
 
@@ -134,10 +140,21 @@ uv run bsa sync-scouts
 ```
 
 This pulls, for each scout:
-- **Advancement records** -- ranks earned, merit badges completed or in progress
+- **Rank advancement** -- ranks earned and in-progress, including per-requirement completion for in-progress ranks
+- **Merit badges** -- completed and in-progress, including per-requirement completion for in-progress MBs
 - **Leadership positions** -- SPL, PL, etc. with dates and approval status
 
 You can re-run `sync-scouts` at any time to pick up new progress. It's idempotent -- existing records are updated, not duplicated.
+
+### `--skip-reqs` flag
+
+To skip the per-requirement detail fetching (faster, fewer API calls):
+
+```bash
+uv run bsa sync-scouts --skip-reqs
+```
+
+This skips the individual requirement completion endpoints for in-progress ranks and merit badges. Useful when you only need high-level rank/MB status and want a quicker sync.
 
 ## Queries
 
@@ -172,6 +189,17 @@ uv run bsa query needs-mb                    # Top 20 across all merit badges
 uv run bsa query needs-mb --eagle-only       # Only Eagle-required MBs
 uv run bsa query needs-mb --limit 10         # Top 10
 ```
+
+### `query mb-reqs` -- Merit Badge Requirement Detail
+
+For in-progress merit badges, shows which individual requirements scouts still need to complete.
+
+```bash
+uv run bsa query mb-reqs                              # All in-progress MBs
+uv run bsa query mb-reqs --merit-badge "First Aid"    # Filter to one MB
+```
+
+Requires `sync-scouts` to have been run without `--skip-reqs`.
 
 ### `query summary` -- Per-Scout Overview
 
@@ -221,15 +249,63 @@ uv run bsa query req-matrix
 #   7: Eagle Scout
 ```
 
+## MCP Server
+
+The project ships an [MCP](https://modelcontextprotocol.io) server that exposes the local SQLite database to AI assistants like Claude. This lets you ask natural-language questions about your troop's data.
+
+### Starting the server
+
+```bash
+uv run bsa-mcp
+```
+
+The server communicates over stdio. Use the `BSA_DB_PATH` environment variable to point it at a non-default database path:
+
+```bash
+BSA_DB_PATH=/path/to/other.db uv run bsa-mcp
+```
+
+### Tools exposed
+
+| Tool | Description |
+|------|-------------|
+| `schema` | Returns all `CREATE TABLE` and `CREATE INDEX` statements so the AI understands the database structure |
+| `query` | Executes any read-only `SELECT` statement and returns results as JSON |
+
+The database is opened in **read-only mode** -- the MCP server cannot modify your data.
+
+### Configuring Claude Code
+
+Add the server to your Claude Code MCP settings (`.claude/mcp_servers.json` or via `/mcp add`):
+
+```json
+{
+  "bsa-db": {
+    "command": "uv",
+    "args": ["run", "--directory", "/path/to/bsa-troop-stats", "bsa-mcp"],
+    "env": {
+      "BSA_DB_PATH": "/path/to/bsa-troop-stats/bsa_troop.db"
+    }
+  }
+}
+```
+
 ## Debugging
 
-The `discover` command dumps the raw JSON response from the API for a single scout. This is useful for understanding what fields the API returns (the youth advancement endpoint isn't publicly documented).
+The `discover` command probes multiple API endpoints for a single scout and prints the raw JSON responses. Useful for understanding what data the API returns (the youth advancement endpoints aren't publicly documented).
 
 ```bash
 uv run bsa discover 123456789
 ```
 
-This prints both the advancement data and leadership history as raw JSON.
+This probes:
+- `/advancements/v2/youth/{uid}/ranks`
+- `/advancements/v2/youth/{uid}/meritBadges`
+- `/advancements/v2/youth/{uid}/awards`
+- `/advancements/v2/{uid}/userActivitySummary`
+- `/advancements/youth/{uid}/leadershipPositionHistory`
+- Rank requirement endpoints (public definitions + per-scout completion) for any in-progress rank found in the database
+- MB requirement endpoints (public definitions + per-scout completion) for any in-progress MB found in the database
 
 ## Database
 
@@ -250,13 +326,14 @@ uv run bsa --db /path/to/other.db sync-ranks
 
 ```
 bsa-db/
-  pyproject.toml              # Project config, defines `bsa` CLI entry point
+  pyproject.toml              # Project config, defines `bsa` and `bsa-mcp` entry points
   uv.lock                     # Lockfile (auto-generated)
   src/bsa_db/
     cli.py                    # CLI entry point (argparse subcommands)
     api.py                    # HTTP client for api.scouting.org
     db.py                     # SQLite schema, init, upsert functions
     queries.py                # Troop-wide analytical SQL queries
+    mcp_server.py             # MCP server exposing the database to AI assistants
 ```
 
-No external dependencies -- uses only Python standard library (`urllib`, `sqlite3`, `csv`, `json`, `argparse`).
+Dependencies: `mcp[cli]` (for the MCP server). The CLI itself uses only the Python standard library (`urllib`, `sqlite3`, `csv`, `json`, `argparse`).
