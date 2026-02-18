@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS scouts (
     first_name TEXT,
     last_name TEXT,
     bsa_member_id TEXT,
+    patrol TEXT,
     current_rank_id INTEGER REFERENCES ranks(id),
     last_synced_at TEXT
 );
@@ -175,9 +176,23 @@ def get_connection(db_path=None):
     return conn
 
 
+def _migrate_schema(conn):
+    """Apply incremental schema changes that SCHEMA_SQL can't handle for existing DBs."""
+    migrations = [
+        "ALTER TABLE scouts ADD COLUMN patrol TEXT",
+    ]
+    for sql in migrations:
+        try:
+            conn.execute(sql)
+            conn.commit()
+        except Exception:
+            pass  # Column already exists
+
+
 def init_db(conn):
     conn.executescript(SCHEMA_SQL)
     conn.commit()
+    _migrate_schema(conn)
     seed_eagle_merit_badges(conn)
 
 
@@ -277,16 +292,17 @@ def upsert_requirements(conn, rank_id, requirements):
 
 
 def upsert_scout(conn, user_id, first_name=None, last_name=None,
-                  bsa_member_id=None):
+                  bsa_member_id=None, patrol=None):
     conn.execute(
-        """INSERT INTO scouts (user_id, first_name, last_name, bsa_member_id, last_synced_at)
-           VALUES (?, ?, ?, ?, ?)
+        """INSERT INTO scouts (user_id, first_name, last_name, bsa_member_id, patrol, last_synced_at)
+           VALUES (?, ?, ?, ?, ?, ?)
            ON CONFLICT(user_id) DO UPDATE SET
                first_name = COALESCE(excluded.first_name, first_name),
                last_name = COALESCE(excluded.last_name, last_name),
                bsa_member_id = COALESCE(excluded.bsa_member_id, bsa_member_id),
+               patrol = COALESCE(excluded.patrol, patrol),
                last_synced_at = excluded.last_synced_at""",
-        (user_id, first_name, last_name, bsa_member_id,
+        (user_id, first_name, last_name, bsa_member_id, patrol,
          datetime.now(timezone.utc).isoformat()),
     )
     conn.commit()
@@ -324,6 +340,8 @@ def import_roster_csv(conn, csv_path):
         col_first = _find_col("first_name", "first", "firstname")
         col_last = _find_col("last_name", "last", "lastname")
         col_name = _find_col("name", "scout_name", "scoutname") if not col_first and not col_last else None
+        col_patrol = _find_col("patrol", "patrol_name", "patrolname")
+        col_type = _find_col("type", "member_type", "membertype")
 
         if not col_user_id and not col_member_id:
             raise ValueError(
@@ -336,6 +354,10 @@ def import_roster_csv(conn, csv_path):
         for row in reader:
             uid = (row.get(col_user_id) or "").strip() if col_user_id else ""
             mid = (row.get(col_member_id) or "").strip() if col_member_id else ""
+
+            if col_type and (row.get(col_type) or "").strip().upper() != "YOUTH":
+                skipped += 1
+                continue
 
             if not uid and not mid:
                 skipped += 1
@@ -351,7 +373,8 @@ def import_roster_csv(conn, csv_path):
                 first = (row.get(col_first) or "").strip() if col_first else None
                 last = (row.get(col_last) or "").strip() if col_last else None
 
-            upsert_scout(conn, primary_id, first, last, mid or None)
+            patrol = (row.get(col_patrol) or "").strip() if col_patrol else None
+            upsert_scout(conn, primary_id, first, last, mid or None, patrol or None)
             imported += 1
 
         return imported, skipped
@@ -610,3 +633,5 @@ def store_leadership(conn, user_id, positions):
         count += 1
     conn.commit()
     return count
+
+

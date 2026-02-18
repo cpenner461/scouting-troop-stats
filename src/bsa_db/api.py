@@ -6,6 +6,42 @@ import urllib.error
 import urllib.parse
 
 BASE_URL = "https://api.scouting.org"
+AUTH_URL = "https://my.scouting.org/api/users/{username}/authenticate"
+
+_CHROME_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/124.0.0.0 Safari/537.36"
+)
+
+
+def authenticate(username, password):
+    """Authenticate with my.scouting.org and return (token, user_id).
+
+    POSTs credentials to the Scoutbook authentication endpoint and returns
+    the bearer token and the account's userId from the JSON response.
+
+    Raises ScoutingAPIError on HTTP errors or if the response is missing
+    expected fields.
+    """
+    url = AUTH_URL.format(username=urllib.parse.quote(username, safe=""))
+    body = urllib.parse.urlencode({"password": password}).encode("utf-8")
+    req = urllib.request.Request(url, data=body, method="POST")
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    req.add_header("Accept", "application/json; version=2")
+    req.add_header("User-Agent", _CHROME_UA)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        body_text = e.read().decode("utf-8", errors="replace")
+        raise ScoutingAPIError(e.code, body_text) from e
+
+    token = data.get("token")
+    user_id = (data.get("account") or {}).get("userId")
+    if not token:
+        raise ScoutingAPIError(0, f"No token in response: {data}")
+    return token, user_id
 
 
 class ScoutingAPIError(Exception):

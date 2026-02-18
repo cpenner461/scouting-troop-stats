@@ -13,11 +13,12 @@ Usage examples:
 """
 
 import argparse
+import getpass
 import json
 import os
 import sys
 
-from bsa_db.api import ScoutingAPI, ScoutingAPIError
+from bsa_db.api import ScoutingAPI, ScoutingAPIError, authenticate
 from bsa_db.db import (
     get_connection,
     import_roster_csv,
@@ -132,6 +133,19 @@ def cmd_add_scout(args):
     print(f"Added scout {args.user_id}" + (f" ({args.name})" if args.name else ""))
 
 
+def _abort_if_unauthorized(e, conn):
+    """Exit immediately with a helpful message on 401 Unauthorized."""
+    if e.status_code == 401:
+        print()  # close any partial output line
+        print(
+            "\nError: 401 Unauthorized — your token has likely expired.\n"
+            "Run 'bsa get-token' to refresh it.",
+            file=sys.stderr,
+        )
+        conn.close()
+        sys.exit(1)
+
+
 def cmd_sync_scouts(args):
     token = require_token()
     conn = get_connection(args.db)
@@ -163,9 +177,10 @@ def cmd_sync_scouts(args):
         try:
             ranks_data = api.get_youth_ranks(uid)
             count = store_youth_ranks(conn, uid, ranks_data)
-            print(f"ranks({count})", end=" ")
+            print(f"ranks({count})", end=" ", flush=True)
         except ScoutingAPIError as e:
-            print(f"[ranks error: {e.status_code}]", end=" ")
+            _abort_if_unauthorized(e, conn)
+            print(f"[ranks error: {e.status_code}]", end=" ", flush=True)
 
         # Fetch per-requirement completion for in-progress ranks
         if not skip_reqs and ranks_data:
@@ -191,25 +206,27 @@ def cmd_sync_scouts(args):
                     rank_req_count += store_youth_rank_requirements(
                         conn, uid, rank_id, youth_reqs
                     )
-                except ScoutingAPIError:
-                    pass
+                except ScoutingAPIError as e:
+                    _abort_if_unauthorized(e, conn)
             if rank_req_count:
-                print(f"rank_reqs({rank_req_count})", end=" ")
+                print(f"rank_reqs({rank_req_count})", end=" ", flush=True)
 
         mb_data = None
         try:
             mb_data = api.get_youth_merit_badges(uid)
             earned, total = store_youth_merit_badges(conn, uid, mb_data)
-            print(f"mbs({earned}/{total})", end=" ")
+            print(f"mbs({earned}/{total})", end=" ", flush=True)
         except ScoutingAPIError as e:
-            print(f"[mbs error: {e.status_code}]", end=" ")
+            _abort_if_unauthorized(e, conn)
+            print(f"[mbs error: {e.status_code}]", end=" ", flush=True)
 
         try:
             lead_data = api.get_leadership_history(uid)
             count = store_leadership(conn, uid, lead_data)
-            print(f"leadership({count})", end=" ")
+            print(f"leadership({count})", end=" ", flush=True)
         except ScoutingAPIError as e:
-            print(f"[lead error: {e.status_code}]", end=" ")
+            _abort_if_unauthorized(e, conn)
+            print(f"[lead error: {e.status_code}]", end=" ", flush=True)
 
         # Fetch per-requirement completion for in-progress MBs
         if not skip_reqs and mb_data:
@@ -236,10 +253,10 @@ def cmd_sync_scouts(args):
                     req_count += store_youth_mb_requirements(
                         conn, uid, mb_id, version_id, youth_reqs
                     )
-                except ScoutingAPIError:
-                    pass  # silently skip failures per-MB
+                except ScoutingAPIError as e:
+                    _abort_if_unauthorized(e, conn)
             if req_count:
-                print(f"reqs({req_count})", end=" ")
+                print(f"reqs({req_count})", end=" ", flush=True)
 
         print()
 
@@ -494,6 +511,47 @@ def cmd_query(args):
     conn.close()
 
 
+def cmd_get_token(args):
+    config_path = os.path.join(os.getcwd(), "config.json")
+
+    # Load existing config so we can read saved username and preserve other keys
+    config = {}
+    if os.path.exists(config_path):
+        with open(config_path) as f:
+            try:
+                config = json.load(f)
+            except json.JSONDecodeError:
+                pass
+
+    print("Authenticate with my.scouting.org")
+    saved_username = config.get("username", "")
+    prompt = f"Username [{saved_username}]: " if saved_username else "Username: "
+    raw = input(prompt).strip()
+    username = raw or saved_username
+    password = getpass.getpass("Password: ")
+    if not username or not password:
+        print("Error: username and password are required.", file=sys.stderr)
+        sys.exit(1)
+    try:
+        token, user_id = authenticate(username, password)
+    except ScoutingAPIError as e:
+        print(f"Authentication failed ({e.status_code}): {e.message}", file=sys.stderr)
+        sys.exit(1)
+
+    config["username"] = username
+    config["token"] = token
+    if user_id:
+        config["user_id"] = str(user_id)
+
+    with open(config_path, "w") as f:
+        json.dump(config, f, indent=2)
+        f.write("\n")
+
+    print(f"Token saved to {config_path}")
+    if user_id:
+        print(f"User ID: {user_id}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="BSA Troop Analytics CLI",
@@ -503,6 +561,7 @@ def main():
     sub = parser.add_subparsers(dest="command")
 
     sub.add_parser("init", help="Initialize the database")
+    sub.add_parser("get-token", help="Authenticate with my.scouting.org and save token to config.json")
     sub.add_parser("sync-ranks", help="Download ranks and requirements")
 
     p_roster = sub.add_parser(
@@ -550,6 +609,7 @@ def main():
 
     commands = {
         "init": cmd_init,
+        "get-token": cmd_get_token,
         "sync-ranks": cmd_sync_ranks,
         "import-roster": cmd_import_roster,
         "add-scout": cmd_add_scout,

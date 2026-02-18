@@ -108,6 +108,15 @@ The CSV parser auto-detects common Scoutbook column names:
 
 At minimum, the CSV needs either a `User ID` or `BSA Member ID` column. Re-importing the same CSV is safe -- it updates existing records without creating duplicates.
 
+### LLM Roster Extraction
+Using the Claude Extension for Google Chrome, login to Scoutbook, go to your unit roster, and use the following prompt:
+
+```
+Create a CSV from the roster on this page that contains the fields "Name,UserId,MemberId,Type,Patrol". UserId is part of the URL linked on the Scout name, the other fields are all present in the table. Page through all pages so that we can get the full roster.
+```
+
+This should generate a CSV that you can use directly with this.
+
 ### Adding scouts manually
 
 If you don't have a CSV, you can add scouts one at a time:
