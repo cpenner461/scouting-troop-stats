@@ -1,0 +1,7 @@
+config.json
+*.db
+*.db-shm
+*.db-wal
+__pycache__/
+*.pyc
+.venv/
