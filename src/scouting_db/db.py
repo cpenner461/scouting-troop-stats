@@ -181,25 +181,9 @@ def get_connection(db_path=None):
     return conn
 
 
-def _migrate_schema(conn):
-    """Apply incremental schema changes that SCHEMA_SQL can't handle for existing DBs."""
-    migrations = [
-        "ALTER TABLE scouts ADD COLUMN patrol TEXT",
-        "CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)",
-        "ALTER TABLE scouts RENAME COLUMN bsa_member_id TO scouting_member_id",
-    ]
-    for sql in migrations:
-        try:
-            conn.execute(sql)
-            conn.commit()
-        except Exception:
-            pass  # Already applied
-
-
 def init_db(conn, troop_name=None):
     conn.executescript(SCHEMA_SQL)
     conn.commit()
-    _migrate_schema(conn)
     if troop_name is not None:
         set_setting(conn, "troop_name", troop_name)
     seed_eagle_merit_badges(conn)
