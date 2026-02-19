@@ -1,4 +1,4 @@
-"""MCP server exposing BSA troop SQLite database to Claude."""
+"""MCP server exposing Scouting troop SQLite database to Claude."""
 
 import json
 import os
@@ -6,9 +6,9 @@ import sqlite3
 
 from mcp.server.fastmcp import FastMCP
 
-DB_PATH = os.environ.get("BSA_DB_PATH", "bsa_troop.db")
+DB_PATH = os.environ.get("BSA_DB_PATH", "scouting_troop.db")
 
-mcp = FastMCP("bsa-db")
+mcp = FastMCP("scouting")
 
 
 def _connect() -> sqlite3.Connection:

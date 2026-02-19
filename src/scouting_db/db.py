@@ -6,7 +6,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-DEFAULT_DB_PATH = Path.cwd() / "bsa_troop.db"
+DEFAULT_DB_PATH = Path.cwd() / "scouting_troop.db"
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS settings (
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS scouts (
     user_id TEXT PRIMARY KEY,
     first_name TEXT,
     last_name TEXT,
-    bsa_member_id TEXT,
+    scouting_member_id TEXT,
     patrol TEXT,
     current_rank_id INTEGER REFERENCES ranks(id),
     last_synced_at TEXT
@@ -185,7 +185,8 @@ def _migrate_schema(conn):
     """Apply incremental schema changes that SCHEMA_SQL can't handle for existing DBs."""
     migrations = [
         "ALTER TABLE scouts ADD COLUMN patrol TEXT",
-        ("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)"),
+        "CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)",
+        "ALTER TABLE scouts RENAME COLUMN bsa_member_id TO scouting_member_id",
     ]
     for sql in migrations:
         try:
@@ -309,17 +310,17 @@ def upsert_requirements(conn, rank_id, requirements):
 
 
 def upsert_scout(conn, user_id, first_name=None, last_name=None,
-                  bsa_member_id=None, patrol=None):
+                  scouting_member_id=None, patrol=None):
     conn.execute(
-        """INSERT INTO scouts (user_id, first_name, last_name, bsa_member_id, patrol, last_synced_at)
+        """INSERT INTO scouts (user_id, first_name, last_name, scouting_member_id, patrol, last_synced_at)
            VALUES (?, ?, ?, ?, ?, ?)
            ON CONFLICT(user_id) DO UPDATE SET
                first_name = COALESCE(excluded.first_name, first_name),
                last_name = COALESCE(excluded.last_name, last_name),
-               bsa_member_id = COALESCE(excluded.bsa_member_id, bsa_member_id),
+               scouting_member_id = COALESCE(excluded.scouting_member_id, scouting_member_id),
                patrol = COALESCE(excluded.patrol, patrol),
                last_synced_at = excluded.last_synced_at""",
-        (user_id, first_name, last_name, bsa_member_id, patrol,
+        (user_id, first_name, last_name, scouting_member_id, patrol,
          datetime.now(timezone.utc).isoformat()),
     )
     conn.commit()
@@ -329,7 +330,7 @@ def import_roster_csv(conn, csv_path):
     """Import Scouts from a Scoutbook Plus roster CSV export.
 
     Auto-detects column names. Common Scoutbook columns:
-    - "BSA Member ID" or "Member ID"
+    - "Scouting Member ID" or "Member ID"
     - "First Name" or "First"
     - "Last Name" or "Last"
     - "User ID" or "UserID"
@@ -351,8 +352,8 @@ def import_roster_csv(conn, csv_path):
 
         col_user_id = _find_col("user_id", "userid", "user id")
         col_member_id = _find_col(
-            "bsa_member_id", "member_id", "bsa member id", "member id",
-            "bsamemberid", "memberid",
+            "scouting_member_id", "member_id", "scouting member id", "member id",
+            "scoutingmemberid", "memberid",
         )
         col_first = _find_col("first_name", "first", "firstname")
         col_last = _find_col("last_name", "last", "lastname")
@@ -362,7 +363,7 @@ def import_roster_csv(conn, csv_path):
 
         if not col_user_id and not col_member_id:
             raise ValueError(
-                f"CSV must have a 'User ID' or 'BSA Member ID' column. "
+                f"CSV must have a 'User ID' or 'Scouting Member ID' column. "
                 f"Found columns: {headers}"
             )
 

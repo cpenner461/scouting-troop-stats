@@ -1,15 +1,15 @@
-"""BSA Troop Analytics CLI Tool.
+"""Scouting Troop Analytics CLI Tool.
 
 Download Scout advancement data from api.scouting.org into a local
 SQLite database and run troop-wide analytical queries.
 
 Usage examples:
-    bsa init
-    bsa sync-ranks
-    bsa import-roster roster.csv
-    bsa sync-scouts
-    bsa query plan --min-pct 40
-    bsa query summary
+    scouting init
+    scouting sync-ranks
+    scouting import-roster roster.csv
+    scouting sync-scouts
+    scouting query plan --min-pct 40
+    scouting query summary
 """
 
 import argparse
@@ -18,8 +18,8 @@ import json
 import os
 import sys
 
-from bsa_db.api import ScoutingAPI, ScoutingAPIError, authenticate
-from bsa_db.db import (
+from scouting_db.api import ScoutingAPI, ScoutingAPIError, authenticate
+from scouting_db.db import (
     get_connection,
     import_roster_csv,
     init_db,
@@ -34,7 +34,7 @@ from bsa_db.db import (
     upsert_requirements,
     upsert_scout,
 )
-from bsa_db.queries import (
+from scouting_db.queries import (
     mb_requirement_detail,
     most_common_incomplete_merit_badges,
     optimal_group_activities,
@@ -47,7 +47,7 @@ SCOUTS_BSA_PROGRAM_ID = 2
 
 
 def get_token():
-    token = os.environ.get("BSA_TOKEN")
+    token = os.environ.get("SCOUTING_TOKEN")
     if token:
         return token
     config_path = os.path.join(os.getcwd(), "config.json")
@@ -62,7 +62,7 @@ def require_token():
     if not token:
         print(
             "Error: No API token found.\n"
-            'Set BSA_TOKEN env var or create config.json with {"token": "..."}',
+            'Set SCOUTING_TOKEN env var or create config.json with {"token": "..."}',
             file=sys.stderr,
         )
         sys.exit(1)
@@ -85,7 +85,7 @@ def cmd_init(args):
     conn = get_connection(args.db)
     init_db(conn, troop_name=args.troop_name)
     conn.close()
-    print(f"Database initialized at {args.db or 'bsa_troop.db'} (troop: {args.troop_name})")
+    print(f"Database initialized at {args.db or 'scouting_troop.db'} (troop: {args.troop_name})")
 
 
 def cmd_sync_ranks(args):
@@ -152,7 +152,7 @@ def _abort_if_unauthorized(e, conn):
         print()  # close any partial output line
         print(
             "\nError: 401 Unauthorized — your token has likely expired.\n"
-            "Run 'bsa get-token' to refresh it.",
+            "Run 'scouting get-token' to refresh it.",
             file=sys.stderr,
         )
         conn.close()
@@ -569,7 +569,7 @@ def cmd_get_token(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="BSA Troop Analytics CLI",
+        description="Scouting Troop Analytics CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--db", help="Path to SQLite database", default=None)

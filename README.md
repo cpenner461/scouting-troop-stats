@@ -23,17 +23,17 @@ uv sync
 
 ```bash
 # 1. Create the database and download rank/requirement data (no auth needed)
-uv run bsa init
-uv run bsa sync-ranks
+uv run scouting init
+uv run scouting sync-ranks
 
 # 2. Import your troop roster from a Scoutbook CSV export
-uv run bsa import-roster roster.csv
+uv run scouting import-roster roster.csv
 
 # 3. Authenticate and save your API token
-uv run bsa get-token
+uv run scouting get-token
 
 # 4. Sync each scout's advancement data
-uv run bsa sync-scouts
+uv run scouting sync-scouts
 
 # 5. Open the dashboard
 python -m http.server 8000
@@ -42,7 +42,7 @@ python -m http.server 8000
 
 ## Dashboard
 
-`dashboard.html` is an interactive browser UI that reads your `bsa_troop.db` directly — no extra server or build step required. It's the primary way to explore your troop's data visually.
+`dashboard.html` is an interactive browser UI that reads your `scouting_troop.db` directly — no extra server or build step required. It's the primary way to explore your troop's data visually.
 
 ### Opening the dashboard
 
@@ -52,9 +52,9 @@ Serve the project directory over HTTP so the dashboard can auto-load the databas
 python -m http.server 8000
 ```
 
-Then open **http://localhost:8000/dashboard.html** in your browser. The dashboard will automatically find and load `bsa_troop.db` from the same directory.
+Then open **http://localhost:8000/dashboard.html** in your browser. The dashboard will automatically find and load `scouting_troop.db` from the same directory.
 
-If you can't run a local server, open `dashboard.html` directly in your browser and use the **Open Database** button to load `bsa_troop.db` manually from your filesystem.
+If you can't run a local server, open `dashboard.html` directly in your browser and use the **Open Database** button to load `scouting_troop.db` manually from your filesystem.
 
 ### Scout view
 
@@ -88,7 +88,7 @@ The dashboard uses [sql.js](https://sql.js.org) (SQLite compiled to WebAssembly)
 The easiest way to get and save a token is to let the CLI do it:
 
 ```bash
-uv run bsa get-token
+uv run scouting get-token
 ```
 
 This prompts for your `my.scouting.org` username and password, fetches a JWT, and saves it to `config.json`. The saved username is remembered for subsequent runs.
@@ -113,8 +113,8 @@ Then supply it via environment variable or config file:
 **Environment variable** (one-off use)
 
 ```bash
-export BSA_TOKEN="eyJhbGciOiJSUzI1NiIs..."
-uv run bsa sync-scouts
+export SCOUTING_TOKEN="eyJhbGciOiJSUzI1NiIs..."
+uv run scouting sync-scouts
 ```
 
 **Config file** (persists across sessions)
@@ -131,7 +131,7 @@ This file is gitignored and will not be committed.
 
 ### Token expiration
 
-BSA tokens expire (typically after a few hours). When `sync-scouts` returns `401` errors, run `bsa get-token` again or grab a fresh token from the browser.
+BSA tokens expire (typically after a few hours). When `sync-scouts` returns `401` errors, run `scouting get-token` again or grab a fresh token from the browser.
 
 ## Exporting Your Troop Roster
 
@@ -145,7 +145,7 @@ There is no public API to pull a troop roster, so you'll export a CSV from Scout
 4. Import it:
 
 ```bash
-uv run bsa import-roster roster.csv
+uv run scouting import-roster roster.csv
 ```
 
 The CSV parser auto-detects common Scoutbook column names:
@@ -153,11 +153,11 @@ The CSV parser auto-detects common Scoutbook column names:
 | Accepted columns     | What it maps to     |
 |----------------------|---------------------|
 | `User ID`, `UserID`  | Primary Scout identifier (used for API calls) |
-| `BSA Member ID`, `Member ID` | BSA membership number (fallback identifier) |
+| `Scouting Member ID`, `Member ID` | BSA membership number (fallback identifier) |
 | `First Name`, `First` | Scout first name    |
 | `Last Name`, `Last`   | Scout last name     |
 
-At minimum, the CSV needs either a `User ID` or `BSA Member ID` column. Re-importing the same CSV is safe -- it updates existing records without creating duplicates.
+At minimum, the CSV needs either a `User ID` or `Scouting Member ID` column. Re-importing the same CSV is safe -- it updates existing records without creating duplicates.
 
 ### LLM Roster Extraction
 Using the Claude Extension for Google Chrome, login to Scoutbook, go to your unit roster, and use the following prompt:
@@ -173,7 +173,7 @@ This should generate a CSV that you can use directly with this.
 If you don't have a CSV, you can add Scouts one at a time:
 
 ```bash
-uv run bsa add-scout 123456789 "John Smith"
+uv run scouting add-scout 123456789 "John Smith"
 ```
 
 ## Syncing Scout Data
@@ -181,7 +181,7 @@ uv run bsa add-scout 123456789 "John Smith"
 Once Scouts are in the database, fetch their advancement records from the API:
 
 ```bash
-uv run bsa sync-scouts
+uv run scouting sync-scouts
 ```
 
 This pulls, for each Scout:
@@ -196,22 +196,22 @@ You can re-run `sync-scouts` at any time to pick up new progress. It's idempoten
 To skip the per-requirement detail fetching (faster, fewer API calls):
 
 ```bash
-uv run bsa sync-scouts --skip-reqs
+uv run scouting sync-scouts --skip-reqs
 ```
 
 This skips the individual requirement completion endpoints for in-progress ranks and merit badges. Useful when you only need high-level rank/MB status and want a quicker sync.
 
 ## Queries
 
-All queries are run via `uv run bsa query <name>`. The database must have rank data (`sync-ranks`) and Scout data (`sync-scouts`) populated first.
+All queries are run via `uv run scouting query <name>`. The database must have rank data (`sync-ranks`) and Scout data (`sync-scouts`) populated first.
 
 ### `query plan` -- Optimal Group Activities
 
 The main event. Shows which merit badges and activities would benefit the most Scouts, so you can plan troop meetings around what the majority still needs.
 
 ```bash
-uv run bsa query plan                 # Activities benefiting >= 50% of troop
-uv run bsa query plan --min-pct 30    # Lower the threshold to 30%
+uv run scouting query plan                 # Activities benefiting >= 50% of troop
+uv run scouting query plan --min-pct 30    # Lower the threshold to 30%
 ```
 
 Example output:
@@ -230,9 +230,9 @@ Optimal Group Activities (>= 50.0% of troop benefits):
 ### `query needs-mb` -- Most Common Unfinished Merit Badges
 
 ```bash
-uv run bsa query needs-mb                    # Top 20 across all merit badges
-uv run bsa query needs-mb --eagle-only       # Only Eagle-required MBs
-uv run bsa query needs-mb --limit 10         # Top 10
+uv run scouting query needs-mb                    # Top 20 across all merit badges
+uv run scouting query needs-mb --eagle-only       # Only Eagle-required MBs
+uv run scouting query needs-mb --limit 10         # Top 10
 ```
 
 ### `query mb-reqs` -- Merit Badge Requirement Detail
@@ -240,8 +240,8 @@ uv run bsa query needs-mb --limit 10         # Top 10
 For in-progress merit badges, shows which individual requirements Scouts still need to complete.
 
 ```bash
-uv run bsa query mb-reqs                              # All in-progress MBs
-uv run bsa query mb-reqs --merit-badge "First Aid"    # Filter to one MB
+uv run scouting query mb-reqs                              # All in-progress MBs
+uv run scouting query mb-reqs --merit-badge "First Aid"    # Filter to one MB
 ```
 
 Requires `sync-scouts` to have been run without `--skip-reqs`.
@@ -249,7 +249,7 @@ Requires `sync-scouts` to have been run without `--skip-reqs`.
 ### `query summary` -- Per-Scout Overview
 
 ```bash
-uv run bsa query summary
+uv run scouting query summary
 ```
 
 Example output:
@@ -269,7 +269,7 @@ Troop Summary (20 Scouts):
 Shows who is nearest to completing their next rank, sorted by fewest requirements remaining.
 
 ```bash
-uv run bsa query next-rank
+uv run scouting query next-rank
 ```
 
 ### `query req-matrix` -- Requirement Completion Matrix
@@ -277,13 +277,13 @@ uv run bsa query next-rank
 For a specific rank, shows which requirements are most commonly incomplete across the troop.
 
 ```bash
-uv run bsa query req-matrix --rank-id 4     # First Class requirements
+uv run scouting query req-matrix --rank-id 4     # First Class requirements
 ```
 
 If you don't know the rank ID, omit `--rank-id` and it will list them:
 
 ```bash
-uv run bsa query req-matrix
+uv run scouting query req-matrix
 # Output:
 #   1: Scout
 #   2: Tenderfoot
@@ -301,13 +301,13 @@ The project ships an [MCP](https://modelcontextprotocol.io) server that exposes 
 ### Starting the server
 
 ```bash
-uv run bsa-mcp
+uv run scouting-mcp
 ```
 
 The server communicates over stdio. Use the `BSA_DB_PATH` environment variable to point it at a non-default database path:
 
 ```bash
-BSA_DB_PATH=/path/to/other.db uv run bsa-mcp
+BSA_DB_PATH=/path/to/other.db uv run scouting-mcp
 ```
 
 ### Tools exposed
@@ -325,11 +325,11 @@ Add the server to your Claude Code MCP settings (`.claude/mcp_servers.json` or v
 
 ```json
 {
-  "bsa-db": {
+  "scouting": {
     "command": "uv",
-    "args": ["run", "--directory", "/path/to/bsa-troop-stats", "bsa-mcp"],
+    "args": ["run", "--directory", "/path/to/bsa-troop-stats", "scouting-mcp"],
     "env": {
-      "BSA_DB_PATH": "/path/to/bsa-troop-stats/bsa_troop.db"
+      "BSA_DB_PATH": "/path/to/bsa-troop-stats/scouting_troop.db"
     }
   }
 }
@@ -340,7 +340,7 @@ Add the server to your Claude Code MCP settings (`.claude/mcp_servers.json` or v
 The `discover` command probes multiple API endpoints for a single Scout and prints the raw JSON responses. Useful for understanding what data the API returns (the youth advancement endpoints aren't publicly documented).
 
 ```bash
-uv run bsa discover 123456789
+uv run scouting discover 123456789
 ```
 
 This probes:
@@ -354,27 +354,27 @@ This probes:
 
 ## Database
 
-All data is stored in `bsa_troop.db` (SQLite) in your current working directory. You can query it directly:
+All data is stored in `scouting_troop.db` (SQLite) in your current working directory. You can query it directly:
 
 ```bash
-sqlite3 bsa_troop.db "SELECT name FROM ranks WHERE program_id = 2 ORDER BY level;"
-sqlite3 bsa_troop.db "SELECT COUNT(*) FROM scouts;"
+sqlite3 scouting_troop.db "SELECT name FROM ranks WHERE program_id = 2 ORDER BY level;"
+sqlite3 scouting_troop.db "SELECT COUNT(*) FROM scouts;"
 ```
 
 Use `--db` to specify a different database path for any command:
 
 ```bash
-uv run bsa --db /path/to/other.db sync-ranks
+uv run scouting --db /path/to/other.db sync-ranks
 ```
 
 ## Project Structure
 
 ```
 bsa-db/
-  pyproject.toml              # Project config, defines `bsa` and `bsa-mcp` entry points
+  pyproject.toml              # Project config, defines `scouting` and `scouting-mcp` entry points
   uv.lock                     # Lockfile (auto-generated)
   dashboard.html              # Browser dashboard (open via http.server or file picker)
-  src/bsa_db/
+  src/scouting_db/
     cli.py                    # CLI entry point (argparse subcommands)
     api.py                    # HTTP client for api.scouting.org
     db.py                     # SQLite schema, init, upsert functions
