@@ -1,0 +1,2265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scouting Stats</title>
+  <style>
+    :root {
+      --blue: #003F87;
+      --blue-dark: #002A5C;
+      --blue-light: #1a5fb4;
+      --gold: #FDB927;
+      --gold-dark: #92400e;
+      --red: #BF0000;
+      --green: #00843D;
+      --green-light: #065f46;
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --muted: #6b7280;
+      --shadow: 0 2px 10px rgba(0,0,0,0.08);
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: #111827;
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--blue);
+      color: white;
+      padding: 0 20px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+    }
+    .logo { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .logo-icon { font-size: 1.4rem; line-height: 1; }
+    nav.main-tabs { display: flex; gap: 4px; margin-left: auto; }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: rgba(255,255,255,0.65);
+      padding: 7px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: all 0.15s;
+      letter-spacing: 0.02em;
+    }
+    .tab-btn:hover { background: rgba(255,255,255,0.12); color: white; }
+    .tab-btn.active { background: var(--gold); color: var(--blue-dark); }
+
+    /* ── DB View ── */
+    .db-view-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding: 40px 20px;
+    }
+    .db-info-card { text-align: left; padding: 28px 36px; }
+    .db-info-card h2 { margin-bottom: 16px; }
+    .db-info-troop { margin-bottom: 16px; }
+    .db-info-troop .label { font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+    .db-info-troop .value { font-size: 1.05rem; font-weight: 700; }
+    .db-stats-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .db-stats-table th { text-align: left; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 0.72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .db-stats-table th:last-child { text-align: right; }
+    .db-stats-table td { padding: 5px 0; border-bottom: 1px solid var(--border); color: #374151; }
+    .db-stats-table tr:last-child td { border-bottom: none; }
+    .db-stats-table td:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--blue); }
+    .db-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 40px 48px;
+      text-align: center;
+      max-width: 440px;
+      width: 100%;
+    }
+    .db-card-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .db-card h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
+    .db-card p { color: var(--muted); margin-bottom: 24px; font-size: 0.88rem; line-height: 1.5; }
+    #db-status { margin-top: 16px; font-size: 0.85rem; color: var(--muted); min-height: 1.2em; }
+    .file-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--gold);
+      color: var(--blue-dark);
+      padding: 7px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .file-label:hover { filter: brightness(1.05); }
+    #db-file { display: none; }
+
+    /* ── Views ── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── Scout Layout ── */
+    .scout-layout { display: flex; min-height: calc(100vh - 56px); }
+    .scout-sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--card);
+      border-right: 1px solid var(--border);
+      padding: 18px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .sidebar-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .scout-main { flex: 1; padding: 20px; overflow-x: hidden; min-width: 0; }
+
+    select {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.875rem;
+      background: white;
+      cursor: pointer;
+      color: #111827;
+      appearance: auto;
+    }
+    select:focus { outline: none; border-color: var(--blue); }
+
+    .scout-typeahead { position: relative; }
+    .scout-typeahead input {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.875rem;
+      box-sizing: border-box;
+      background: white;
+      color: #111827;
+    }
+    .scout-typeahead input:focus { outline: none; border-color: var(--blue); }
+    .scout-typeahead input:disabled { color: var(--muted); background: var(--bg); }
+    .scout-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% - 1px);
+      left: 0; right: 0;
+      background: white;
+      border: 1.5px solid var(--blue);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      max-height: 260px;
+      overflow-y: auto;
+      z-index: 200;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+    .scout-dropdown.open { display: block; }
+    .scout-dd-item {
+      padding: 8px 10px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .scout-dd-item:hover, .scout-dd-item.kbd-active { background: var(--bg); }
+    .scout-dd-empty { padding: 8px 10px; font-size: 0.875rem; color: var(--muted); }
+
+    .scout-meta-card {
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.8rem;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+    .scout-meta-card .rank-badge {
+      display: inline-block;
+      background: var(--blue);
+      color: white;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    /* ── Stat Cards ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+      border-left: 4px solid var(--blue);
+    }
+    .stat-card.gold  { border-color: var(--gold); }
+    .stat-card.green { border-color: var(--green); }
+    .stat-card.red   { border-color: var(--red); }
+    .stat-card.purple { border-color: #7c3aed; }
+
+    .stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
+    .stat-value { font-size: 2rem; font-weight: 800; color: var(--blue); line-height: 1; }
+    .stat-card.gold  .stat-value { color: var(--gold-dark); }
+    .stat-card.green .stat-value { color: var(--green); }
+    .stat-card.red   .stat-value { color: var(--red); }
+    .stat-card.purple .stat-value { color: #5b21b6; }
+    .stat-sub { font-size: 0.76rem; color: var(--muted); margin-top: 5px; }
+
+    /* ── Progress Bars ── */
+    .prog-bar { background: var(--border); border-radius: 99px; height: 7px; margin-top: 9px; overflow: hidden; }
+    .prog-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; background: var(--blue); }
+    .prog-fill.gold   { background: var(--gold); }
+    .prog-fill.green  { background: var(--green); }
+    .prog-fill.red    { background: var(--red); }
+    .prog-fill.purple { background: #7c3aed; }
+
+    /* ── Panels ── */
+    .panels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .panel-full { grid-column: 1 / -1; }
+
+    .panel {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #fafafa;
+    }
+    .panel-header h2 { font-size: 0.9rem; font-weight: 700; }
+    .panel-icon { font-size: 1rem; line-height: 1; }
+    .panel-body { padding: 16px 18px; }
+    .panel-body.no-pad { padding: 0; }
+
+    /* ── Tables ── */
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    th {
+      text-align: left;
+      padding: 7px 12px;
+      font-size: 0.67rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+      background: #fafafa;
+    }
+    td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #f9fafb; }
+    .bold-row td { font-weight: 700; }
+
+    /* ── Badges / Pills ── */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 9px;
+      border-radius: 99px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .pill-blue   { background: #dbeafe; color: #1e40af; }
+    .pill-green  { background: #d1fae5; color: var(--green-light); }
+    .pill-gold   { background: #fef3c7; color: var(--gold-dark); }
+    .pill-red    { background: #fee2e2; color: #991b1b; }
+    .pill-gray   { background: #f3f4f6; color: #4b5563; }
+    .pill-purple { background: #ede9fe; color: #5b21b6; }
+
+    /* ── Eagle MB Grid ── */
+    .eagle-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 7px;
+    }
+    .eagle-item {
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-size: 0.77rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: 1.5px solid var(--border);
+      line-height: 1.3;
+    }
+    .eagle-item.earned    { background: #d1fae5; border-color: #6ee7b7; color: var(--green-light); }
+    .eagle-item.progress  { background: #fef3c7; border-color: #fcd34d; color: var(--gold-dark); }
+    .eagle-item.needed    { background: #fff7ed; border-color: #fdba74; color: #9a3412; }
+    .ei-icon { font-size: 0.95rem; flex-shrink: 0; }
+
+    /* ── Eagle Choice Groups ── */
+    .choice-section-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      font-weight: 700;
+      margin: 14px 0 8px;
+    }
+    .choice-group {
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+    .choice-group.cg-satisfied { border-color: #6ee7b7; }
+    .choice-group.cg-progress  { border-color: #fcd34d; }
+    .choice-group-header {
+      padding: 8px 12px;
+      background: #f9fafb;
+      font-size: 0.78rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .choice-group.cg-satisfied .choice-group-header { background: #ecfdf5; }
+    .choice-group.cg-progress  .choice-group-header { background: #fffbeb; }
+    .choice-group-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 10px 12px;
+      background: white;
+    }
+    /* Troop-level choice group rows */
+    .cg-troop-row {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .cg-troop-row:last-child { border-bottom: none; }
+    .cg-troop-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+    .cg-badge-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      min-width: 100px;
+    }
+    .cg-badge-name { font-weight: 600; color: #374151; }
+    .cg-badge-count { font-size: 1rem; font-weight: 800; color: var(--blue); }
+    .cg-badge-sub { font-size: 0.68rem; color: var(--muted); }
+
+    /* ── Requirement List ── */
+    .req-list { list-style: none; }
+    .req-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.82rem;
+    }
+    .req-item:last-child { border-bottom: none; }
+    .req-circle {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .req-circle.done { background: #d1fae5; color: var(--green-light); font-weight: 700; }
+    .req-circle.todo { background: #f3f4f6; color: #9ca3af; border: 2px dashed #d1d5db; }
+    .req-num { font-size: 0.68rem; color: var(--muted); font-weight: 700; }
+    .req-date { font-size: 0.7rem; color: var(--green); margin-top: 2px; }
+
+    /* ── Rank Pipeline ── */
+    .pipeline-wrap { overflow-x: auto; padding-bottom: 4px; }
+    .pipeline {
+      display: inline-flex;
+      align-items: flex-start;
+      gap: 0;
+      padding: 8px 4px;
+      min-width: 100%;
+    }
+    .pipe-step { display: flex; flex-direction: column; align-items: center; min-width: 82px; position: relative; }
+    .pipe-step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 20px;
+      width: calc(100% - 4px);
+      height: 3px;
+      background: var(--border);
+      z-index: 0;
+    }
+    .pipe-step.done::after { background: var(--green); }
+    .pipe-dot {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--border);
+      border: 3px solid white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: #6b7280;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    .pipe-dot.done    { background: var(--green); color: white; }
+    .pipe-dot.current { background: var(--blue); color: white; }
+    .pipe-dot.next    { background: var(--gold); color: var(--blue-dark); border-color: var(--gold); }
+    .pipe-label { font-size: 0.62rem; text-align: center; margin-top: 6px; color: var(--muted); max-width: 76px; line-height: 1.3; }
+    .pipe-label.current { color: var(--blue); font-weight: 700; }
+    .pipe-label.done    { color: var(--green); }
+
+    /* ── Mini Bar (inline) ── */
+    .bar-cell { min-width: 110px; }
+    .bar-wrap { display: flex; align-items: center; gap: 6px; }
+    .mini-bar { flex: 1; background: var(--border); border-radius: 4px; height: 6px; overflow: hidden; min-width: 40px; }
+    .mini-fill { height: 100%; border-radius: 4px; background: var(--blue); }
+    .mini-fill.gold   { background: var(--gold); }
+    .mini-fill.green  { background: var(--green); }
+    .mini-fill.red    { background: var(--red); }
+    .mini-fill.purple { background: #7c3aed; }
+    .bar-pct { font-size: 0.72rem; color: var(--muted); white-space: nowrap; min-width: 34px; text-align: right; }
+
+    /* ── Mini Tabs ── */
+    .mini-tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+    .mini-tab {
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 0.77rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid var(--border);
+      background: white;
+      color: var(--muted);
+    }
+    .mini-tab:hover { border-color: var(--blue); color: var(--blue); }
+    .mini-tab.active { background: var(--blue); color: white; border-color: var(--blue); }
+
+    /* ── Empty / No-data ── */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty-state .ei { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.875rem; line-height: 1.6; max-width: 320px; margin: 0 auto; }
+    .no-data { text-align: center; padding: 28px; color: var(--muted); font-size: 0.82rem; }
+
+    /* ── Eagle star marker ── */
+    .star-marker { color: var(--gold); font-size: 0.8rem; }
+
+    /* ── Troop view ── */
+    .troop-main { padding: 20px; }
+
+    /* ── Alerts / callouts ── */
+    .callout {
+      background: #fefce8;
+      border: 1px solid #fde047;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.8rem;
+      color: #713f12;
+      margin-bottom: 12px;
+    }
+
+    /* ── MB Detail Modal ── */
+    .mb-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.48);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s;
+    }
+    .mb-modal-overlay.open { opacity: 1; pointer-events: all; }
+    .mb-modal {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.28);
+      width: 100%;
+      max-width: 700px;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      transform: scale(0.96) translateY(8px);
+      transition: transform 0.18s;
+    }
+    .mb-modal-overlay.open .mb-modal { transform: scale(1) translateY(0); }
+    .mb-modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .mb-modal-close {
+      background: #f3f4f6;
+      border: none;
+      border-radius: 6px;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--muted);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mb-modal-close:hover { background: var(--border); color: #111; }
+    .mb-modal-body { overflow-y: auto; padding: 14px 18px; flex: 1; }
+
+    /* Requirement tree nodes */
+    .req-node {
+      border-radius: 8px;
+      margin-bottom: 5px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .req-node.node-done { border-color: #bbf7d0; background: #f0fdf4; }
+    .req-node.node-todo { background: #fafafa; }
+    .req-node.is-note   { background: transparent; border-color: transparent; }
+    .req-node.is-child  { border-radius: 6px; margin-bottom: 3px; }
+    .req-node-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 9px 12px;
+    }
+    .req-node-text { flex: 1; min-width: 0; font-size: 0.83rem; line-height: 1.5; }
+    .req-node-title { display: flex; gap: 5px; align-items: baseline; flex-wrap: wrap; }
+    .req-children { padding: 0 10px 8px 44px; }
+    .req-choose-label {
+      font-size: 0.71rem;
+      color: var(--muted);
+      font-style: italic;
+      padding: 2px 10px 6px 44px;
+    }
+    .req-note-text {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-style: italic;
+      padding: 5px 12px 5px 20px;
+      border-left: 3px solid var(--border);
+      margin: 2px 0 6px;
+      line-height: 1.5;
+    }
+
+    /* Clickable rows */
+    .clickable-row { cursor: pointer; }
+    .clickable-row:hover td { background: #f0f4f8 !important; }
+    .mb-name-link { color: var(--blue); text-decoration: underline; text-decoration-style: dotted; }
+    .scout-link { color: var(--blue); text-decoration: underline; text-decoration-style: dotted; cursor: pointer; }
+
+    /* Sortable tables */
+    table.sortable th:not(:empty) { cursor: pointer; user-select: none; }
+    table.sortable th.sort-asc::after  { content: ' ↑'; color: var(--blue); }
+    table.sortable th.sort-desc::after { content: ' ↓'; color: var(--blue); }
+    table.sortable th.sort-asc,
+    table.sortable th.sort-desc { color: var(--blue); }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .panels-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      .scout-layout { flex-direction: column; }
+      .scout-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .eagle-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════ HEADER ══════════ -->
+<header>
+  <div class="logo">
+    <span class="logo-icon">⚜️</span>
+    <span id="header-title">Scouting Stats</span>
+  </div>
+  <nav class="main-tabs">
+    <button class="tab-btn active" data-view="troop" onclick="switchView('troop',this)">Troop</button>
+    <button class="tab-btn" data-view="scout" onclick="switchView('scout',this)">Scout</button>
+    <button class="tab-btn" data-view="db" id="db-tab" onclick="switchView('db',this)">Settings</button>
+  </nav>
+</header>
+
+<!-- ══════════ DB VIEW ══════════ -->
+<div class="view" id="view-db">
+  <div class="db-view-content">
+    <div class="db-card">
+      <div class="db-card-icon">🗄️</div>
+      <h2>Load Database</h2>
+      <p>Open your <code>scouting_troop.db</code> file, or serve this page over HTTP to auto-load it from the same directory.</p>
+      <label class="file-label" for="db-file">📂 Open Database</label>
+      <input type="file" id="db-file" accept=".db,.sqlite,.sqlite3">
+      <div id="db-status"></div>
+    </div>
+    <div class="db-card db-info-card" id="db-info-card" style="display:none">
+      <h2>📊 Database Info</h2>
+      <div id="db-info-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SCOUT VIEW ══════════ -->
+<div class="view" id="view-scout">
+  <div class="scout-layout">
+
+    <aside class="scout-sidebar">
+      <div class="sidebar-label">Select Scout</div>
+      <div class="scout-typeahead" id="scout-typeahead">
+        <input type="text" id="scout-input" placeholder="Load a database first…" autocomplete="off" disabled>
+        <div class="scout-dropdown" id="scout-dropdown"></div>
+      </div>
+      <div id="scout-meta"></div>
+    </aside>
+
+    <div class="scout-main">
+      <div id="scout-content">
+        <div class="empty-state">
+          <div class="ei">⚜️</div>
+          <p>Load a database file and select a Scout to view their individual record and advancement status.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TROOP VIEW ══════════ -->
+<div class="view active" id="view-troop">
+  <div class="troop-main">
+    <div id="troop-content">
+      <div class="empty-state">
+        <div class="ei">⚜️</div>
+        <p>Load a database file to see troop-wide statistics, Eagle MB gaps, activity planning, and roster summaries.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MB DETAIL MODAL ══════════ -->
+<div id="mb-modal" class="mb-modal-overlay" onclick="if(event.target===this)closeMBModal()">
+  <div class="mb-modal">
+    <div class="mb-modal-header">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:1rem">🎖️</span>
+          <h2 id="mb-modal-title" style="font-size:1.05rem;font-weight:700"></h2>
+        </div>
+        <div id="mb-modal-status" style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap"></div>
+      </div>
+      <button class="mb-modal-close" onclick="closeMBModal()" title="Close (Esc)">✕</button>
+    </div>
+    <div id="mb-modal-progress"></div>
+    <div id="mb-modal-body" class="mb-modal-body"></div>
+  </div>
+</div>
+
+<!-- ══════════ EAGLE PIPELINE MODAL ══════════ -->
+<div id="pipeline-modal" class="mb-modal-overlay" onclick="if(event.target===this)closePipelineModal()">
+  <div class="mb-modal" style="max-width:860px">
+    <div class="mb-modal-header">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:1rem">🦅</span>
+          <h2 id="pipeline-modal-title" style="font-size:1.05rem;font-weight:700"></h2>
+        </div>
+        <div id="pipeline-modal-sub" style="margin-top:5px;font-size:0.78rem;color:var(--muted)"></div>
+      </div>
+      <button class="mb-modal-close" onclick="closePipelineModal()" title="Close (Esc)">✕</button>
+    </div>
+    <div id="pipeline-modal-body" class="mb-modal-body"></div>
+  </div>
+</div>
+
+<!-- ══════════ TROOP MB PARTICIPATION MODAL ══════════ -->
+<div id="troop-mb-modal" class="mb-modal-overlay" onclick="if(event.target===this)closeTroopMBModal()">
+  <div class="mb-modal">
+    <div class="mb-modal-header">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:1rem">🎖️</span>
+          <h2 id="troop-mb-modal-title" style="font-size:1.05rem;font-weight:700"></h2>
+        </div>
+        <div id="troop-mb-modal-sub" style="margin-top:5px;font-size:0.78rem;color:var(--muted)"></div>
+      </div>
+      <button class="mb-modal-close" onclick="closeTroopMBModal()" title="Close (Esc)">✕</button>
+    </div>
+    <div id="troop-mb-modal-body" class="mb-modal-body"></div>
+  </div>
+</div>
+
+<!-- ══════════ SCRIPTS ══════════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<script>
+'use strict';
+
+// ─── Eagle Scout requirement structure ───────────────────────────────────────
+// Source: https://www.scouting.org/skills/merit-badges/eagle-required/
+// Eagle rank requires 21 total merit badges, of which 14 must fill these slots:
+//   11 mandatory badges (all required) + 3 "choose one" group slots
+const EAGLE_MANDATORY = [
+  'Camping', 'Citizenship in the Community', 'Citizenship in the Nation',
+  'Citizenship in Society', 'Citizenship in the World', 'Communication',
+  'Cooking', 'Family Life', 'First Aid', 'Personal Fitness', 'Personal Management',
+];
+const EAGLE_CHOICE_GROUPS = [
+  { label: 'Emergency Preparedness or Lifesaving',  badges: ['Emergency Preparedness', 'Lifesaving'] },
+  { label: 'Environmental Science or Sustainability', badges: ['Environmental Science', 'Sustainability'] },
+  { label: 'Swimming, Hiking, or Cycling',            badges: ['Swimming', 'Hiking', 'Cycling'] },
+];
+const EAGLE_SLOT_COUNT = 14; // 11 mandatory + 3 choice group slots
+const EAGLE_TOTAL_MBS  = 21; // total merit badges required for Eagle Scout rank
+
+// Returns { slotsDone, slotsInProg } given a map of { badgeName -> status }
+function calcEagleSlots(statusMap) {
+  const mandatoryDone   = EAGLE_MANDATORY.filter(b => statusMap[b] === 'completed').length;
+  const choicesDone     = EAGLE_CHOICE_GROUPS.filter(g => g.badges.some(b => statusMap[b] === 'completed')).length;
+  const mandatoryInProg = EAGLE_MANDATORY.filter(b => statusMap[b] === 'in_progress').length;
+  // A choice slot counts as in-progress only if not satisfied but at least one option is started
+  const choicesInProg   = EAGLE_CHOICE_GROUPS.filter(g =>
+    !g.badges.some(b => statusMap[b] === 'completed') &&
+     g.badges.some(b => statusMap[b] === 'in_progress')
+  ).length;
+  return { slotsDone: mandatoryDone + choicesDone, slotsInProg: mandatoryInProg + choicesInProg };
+}
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let db              = null;
+let SQL             = null;
+let currentScoutId  = null;
+let hasPatrolCol    = false;
+
+// ─── SQL helpers ─────────────────────────────────────────────────────────────
+function q(sql, params = []) {
+  if (!db) return [];
+  try {
+    const stmt = db.prepare(sql);
+    const rows = [];
+    stmt.bind(params);
+    while (stmt.step()) rows.push(stmt.getAsObject());
+    stmt.free();
+    return rows;
+  } catch (e) {
+    console.error('Query error:', e.message, '\nSQL:', sql);
+    return [];
+  }
+}
+
+function q1(sql, params = []) {
+  const r = q(sql, params);
+  return r.length ? r[0] : null;
+}
+
+// ─── View switching ──────────────────────────────────────────────────────────
+function switchView(name, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'troop' && db) loadTroopView();
+}
+
+// ─── Sortable tables ─────────────────────────────────────────────────────────
+document.addEventListener('click', function(e) {
+  const th = e.target.closest('th');
+  if (!th || !th.textContent.trim()) return;
+  const table = th.closest('table.sortable');
+  if (!table) return;
+  const tbody = table.querySelector('tbody');
+  if (!tbody) return;
+
+  const ths = Array.from(th.closest('tr').querySelectorAll('th'));
+  const colIdx = ths.indexOf(th);
+  const goDesc = th.classList.contains('sort-asc');
+
+  table.querySelectorAll('th').forEach(t => t.classList.remove('sort-asc', 'sort-desc'));
+  th.classList.add(goDesc ? 'sort-desc' : 'sort-asc');
+
+  const dir = goDesc ? -1 : 1;
+  Array.from(tbody.querySelectorAll('tr'))
+    .sort((a, b) => {
+      const aText = (a.querySelectorAll('td')[colIdx]?.textContent ?? '').trim().replace(/[%,]/g, '');
+      const bText = (b.querySelectorAll('td')[colIdx]?.textContent ?? '').trim().replace(/[%,]/g, '');
+      const aNum = parseFloat(aText);
+      const bNum = parseFloat(bText);
+      if (!isNaN(aNum) && !isNaN(bNum)) return dir * (aNum - bNum);
+      return dir * aText.localeCompare(bText);
+    })
+    .forEach(r => tbody.appendChild(r));
+});
+
+function goToScout(userId) {
+  const scoutTab = document.querySelector('.tab-btn[data-view="scout"]');
+  switchView('scout', scoutTab);
+  const scout = _scoutList.find(s => String(s.user_id) === String(userId));
+  const input = document.getElementById('scout-input');
+  input.value = scout ? scout.name : '';
+  _closeDropdown();
+  loadScout(userId);
+}
+
+// ─── DB loading ──────────────────────────────────────────────────────────────
+async function initSQL() {
+  if (SQL) return;
+  SQL = await initSqlJs({
+    locateFile: f => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/' + f
+  });
+}
+
+async function loadDbBuffer(buf, filename) {
+  const status = document.getElementById('db-status');
+  await initSQL();
+  db = new SQL.Database(new Uint8Array(buf));
+
+  // Quick sanity check
+  const row = q1("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name='scouts'");
+  if (!row || row.n === 0) throw new Error('This does not look like a scouting_troop.db file (scouts table not found)');
+
+  const scouts = q1('SELECT COUNT(*) AS n FROM scouts');
+  const scoutCount = scouts ? scouts.n : 0;
+
+  status.innerHTML = `✓ <strong>${esc(filename)}</strong> — ${scoutCount} Scout${scoutCount !== 1 ? 's' : ''} loaded`;
+
+  const hasSettings = q1("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name='settings'");
+  const troopNameRow = hasSettings && hasSettings.n ? q1("SELECT value FROM settings WHERE key = 'troop_name'") : null;
+  const troopName = troopNameRow ? troopNameRow.value : null;
+  const titleText = troopName ? `Scouting Stats: ${troopName}` : 'Scouting Stats';
+  document.getElementById('header-title').textContent = titleText;
+  document.title = titleText;
+
+  hasPatrolCol = q("PRAGMA table_info(scouts)").some(c => c.name === 'patrol');
+
+  // Populate the Settings info card
+  const DB_TABLES = [
+    { label: 'Scouts',                   table: 'scouts' },
+    { label: 'Ranks',                    table: 'ranks' },
+    { label: 'Merit Badges',             table: 'merit_badges' },
+    { label: 'Scout Advancements',       table: 'scout_advancements' },
+    { label: 'Scout Merit Badges',       table: 'scout_merit_badges' },
+    { label: 'Rank Requirements',        table: 'requirements' },
+    { label: 'Scout Rank Completions',   table: 'scout_requirement_completions' },
+    { label: 'MB Requirements',          table: 'mb_requirements' },
+    { label: 'Scout MB Completions',     table: 'scout_mb_requirement_completions' },
+    { label: 'Leadership Records',       table: 'scout_leadership' },
+  ];
+  const tableRows = DB_TABLES.map(({ label, table }) => {
+    const exists = q1(`SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name='${table}'`);
+    const count = (exists && exists.n) ? (q1(`SELECT COUNT(*) AS n FROM ${table}`) || {n:0}).n : 0;
+    return `<tr><td>${esc(label)}</td><td>${count.toLocaleString()}</td></tr>`;
+  }).join('');
+  document.getElementById('db-info-content').innerHTML =
+    (troopName ? `<div class="db-info-troop"><div class="label">Troop</div><div class="value">${esc(troopName)}</div></div>` : '') +
+    `<table class="db-stats-table">
+      <thead><tr><th>Table</th><th>Rows</th></tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table>`;
+  document.getElementById('db-info-card').style.display = '';
+
+  loadScoutList();
+  // Switch to Troop view and render it
+  const troopBtn = document.querySelector('.tab-btn[data-view="troop"]');
+  switchView('troop', troopBtn);
+  loadTroopView();
+}
+
+document.getElementById('db-file').addEventListener('change', async function (e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const status = document.getElementById('db-status');
+  status.textContent = 'Loading…';
+  try {
+    const buf = await file.arrayBuffer();
+    await loadDbBuffer(buf, file.name);
+  } catch (err) {
+    status.textContent = '⚠ ' + err.message;
+    console.error(err);
+  }
+});
+
+// Auto-load scouting_troop.db from the same directory (works when served over HTTP)
+(async () => {
+  const status = document.getElementById('db-status');
+  try {
+    await initSQL();
+    const resp = await fetch('./scouting_troop.db');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const buf = await resp.arrayBuffer();
+    await loadDbBuffer(buf, 'scouting_troop.db');
+  } catch {
+    status.innerHTML = 'Auto-load failed — use the button above to open <strong>scouting_troop.db</strong> manually.';
+  }
+})();
+
+// ─── Scout typeahead ─────────────────────────────────────────────────────────
+let _scoutList = [];  // [{user_id, name}]
+let _ddOpen = false;
+let _activeIdx = -1;
+
+function _renderDropdown(filter) {
+  const dd = document.getElementById('scout-dropdown');
+  const lc = (filter || '').toLowerCase();
+  const matches = lc ? _scoutList.filter(s => s.name.toLowerCase().includes(lc)) : _scoutList;
+  if (!matches.length) {
+    dd.innerHTML = '<div class="scout-dd-empty">No match</div>';
+  } else {
+    dd.innerHTML = matches.map(s =>
+      `<div class="scout-dd-item" data-uid="${esc(String(s.user_id))}">${esc(s.name)}</div>`
+    ).join('');
+  }
+  _activeIdx = -1;
+  dd.classList.add('open');
+  _ddOpen = true;
+}
+
+function _closeDropdown() {
+  document.getElementById('scout-dropdown').classList.remove('open');
+  _ddOpen = false;
+  _activeIdx = -1;
+}
+
+function _selectScoutItem(uid, name) {
+  document.getElementById('scout-input').value = name;
+  _closeDropdown();
+  loadScout(uid);
+}
+
+(function initTypeahead() {
+  const input = document.getElementById('scout-input');
+  const dd    = document.getElementById('scout-dropdown');
+
+  input.addEventListener('focus', () => { if (!input.disabled) _renderDropdown(input.value); });
+  input.addEventListener('input', () => _renderDropdown(input.value));
+
+  input.addEventListener('keydown', e => {
+    const items = dd.querySelectorAll('.scout-dd-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _activeIdx = Math.min(_activeIdx + 1, items.length - 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _activeIdx = Math.max(_activeIdx - 1, 0);
+    } else if (e.key === 'Enter') {
+      if (_activeIdx >= 0 && items[_activeIdx]) {
+        const it = items[_activeIdx];
+        _selectScoutItem(it.dataset.uid, it.textContent);
+      }
+      return;
+    } else if (e.key === 'Escape') {
+      _closeDropdown();
+      input.blur();
+      return;
+    } else {
+      return;
+    }
+    items.forEach((it, i) => it.classList.toggle('kbd-active', i === _activeIdx));
+    if (items[_activeIdx]) items[_activeIdx].scrollIntoView({ block: 'nearest' });
+  });
+
+  dd.addEventListener('mousedown', e => {
+    const item = e.target.closest('.scout-dd-item');
+    if (item) _selectScoutItem(item.dataset.uid, item.textContent);
+  });
+
+  document.addEventListener('click', e => {
+    if (_ddOpen && !e.target.closest('#scout-typeahead')) _closeDropdown();
+  });
+})();
+
+// ─── Scout View ───────────────────────────────────────────────────────────────
+function loadScoutList() {
+  _scoutList = q("SELECT user_id, TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) AS name FROM scouts ORDER BY last_name, first_name");
+  const input = document.getElementById('scout-input');
+  input.disabled = false;
+  input.value = '';
+  input.placeholder = _scoutList.length ? `Search ${_scoutList.length} Scouts…` : 'No Scouts found';
+}
+
+function loadScout(userId) {
+  currentScoutId = userId || null;
+  if (!userId) {
+    document.getElementById('scout-content').innerHTML =
+      '<div class="empty-state"><div class="ei">⚜️</div><p>Select a Scout from the list.</p></div>';
+    document.getElementById('scout-meta').innerHTML = '';
+    return;
+  }
+
+  // ── Queries ──
+  const patrolSel = hasPatrolCol ? 's.patrol,' : 'NULL AS patrol,';
+  const ov = q1(`
+    SELECT s.user_id,
+      TRIM(COALESCE(s.first_name,'') || ' ' || COALESCE(s.last_name,'')) AS scout_name,
+      s.scouting_member_id, s.last_synced_at, ${patrolSel}
+      COALESCE(r.name, 'New Scout') AS current_rank,
+      r.level AS rank_level,
+      (SELECT date_completed FROM scout_advancements
+         WHERE scout_user_id = s.user_id AND advancement_type = 'rank' AND status = 'completed'
+         ORDER BY advancement_id DESC LIMIT 1) AS last_rank_date,
+      (SELECT COUNT(*) FROM scout_merit_badges smb
+         WHERE smb.scout_user_id = s.user_id AND smb.status = 'completed') AS total_mbs,
+      (SELECT COUNT(*) FROM scout_merit_badges smb
+         JOIN merit_badges mb ON mb.name = smb.merit_badge_name
+         WHERE smb.scout_user_id = s.user_id AND smb.status = 'completed' AND mb.is_eagle_required = 1) AS eagle_mbs,
+      (SELECT COUNT(*) FROM scout_merit_badges smb
+         WHERE smb.scout_user_id = s.user_id AND smb.status = 'in_progress') AS mbs_in_progress,
+      (SELECT COUNT(*) FROM scout_leadership sl WHERE sl.scout_user_id = s.user_id) AS leadership_count,
+      (SELECT SUM(COALESCE(days_in_position,0)) FROM scout_leadership sl
+         WHERE sl.scout_user_id = s.user_id AND sl.approved = 1) AS leadership_days
+    FROM scouts s LEFT JOIN ranks r ON r.id = s.current_rank_id
+    WHERE s.user_id = ?`, [userId]);
+
+  if (!ov) return;
+
+  // Fetch status for every badge in the Eagle pool (mandatory + all choice options)
+  const eagleMBs = q(`
+    SELECT mb.name, COALESCE(smb.status, 'needed') AS status, smb.date_completed
+    FROM merit_badges mb
+    LEFT JOIN scout_merit_badges smb ON smb.merit_badge_name = mb.name AND smb.scout_user_id = ?
+    WHERE mb.is_eagle_required = 1
+    ORDER BY mb.name`, [userId]);
+
+  // Per-badge requirement progress (only rows where requirements have been synced)
+  const mbReqProgress = q(`
+    SELECT mb.name AS mb_name,
+      COUNT(mr.id) AS total_reqs,
+      COALESCE(SUM(CASE WHEN smrc.completed = 1 THEN 1 ELSE 0 END), 0) AS done_reqs
+    FROM merit_badges mb
+    JOIN scout_merit_badges smb
+      ON smb.merit_badge_name = mb.name AND smb.scout_user_id = ?
+      AND smb.raw_json IS NOT NULL
+    JOIN mb_requirements mr
+      ON mr.mb_api_id = CAST(json_extract(smb.raw_json, '$.id') AS INTEGER)
+      AND mr.parent_requirement_id IS NULL
+    LEFT JOIN scout_mb_requirement_completions smrc
+      ON smrc.mb_requirement_id = mr.id AND smrc.scout_user_id = ?
+    WHERE mb.is_eagle_required = 1
+    GROUP BY mb.name`, [userId, userId]);
+  const eagleProgMap = {};
+  mbReqProgress.forEach(r => { eagleProgMap[r.mb_name] = { done: r.done_reqs, total: r.total_reqs }; });
+
+  const nextReqs = q(`
+    WITH cs AS (
+      SELECT s.current_rank_id, COALESCE(r.level, 0) AS lvl
+      FROM scouts s LEFT JOIN ranks r ON r.id = s.current_rank_id
+      WHERE s.user_id = ?
+    ),
+    nr AS (
+      SELECT r.id, r.name FROM ranks r, cs
+      WHERE r.program_id = 2 AND r.level = cs.lvl + 1
+      LIMIT 1
+    )
+    SELECT nr.name AS next_rank_name,
+      r.requirement_number,
+      COALESCE(r.short, SUBSTR(r.name, 1, 80)) AS desc,
+      r.name AS full_name,
+      COALESCE(src.completed, 0) AS completed,
+      src.date_completed
+    FROM nr
+    JOIN requirements r ON r.rank_id = nr.id AND r.required = 1 AND r.parent_requirement_id IS NULL
+    LEFT JOIN scout_requirement_completions src
+      ON src.requirement_id = r.id AND src.scout_user_id = ?
+    ORDER BY r.sort_order, r.requirement_number`, [userId, userId]);
+
+  const allMBs = q(`
+    SELECT merit_badge_name, status, date_completed, date_started
+    FROM scout_merit_badges WHERE scout_user_id = ?
+    ORDER BY
+      CASE status WHEN 'completed' THEN 0 ELSE 1 END,
+      merit_badge_name`, [userId]);
+
+  const leadership = q(`
+    SELECT position, start_date, end_date, days_in_position, approved, patrol, unit
+    FROM scout_leadership WHERE scout_user_id = ?
+    ORDER BY start_date DESC`, [userId]);
+
+  const rankHistory = q(`
+    SELECT advancement_name, status, date_completed, advancement_id
+    FROM scout_advancements WHERE scout_user_id = ? AND advancement_type = 'rank'
+    ORDER BY advancement_id`, [userId]);
+
+  const allRanks = q(`SELECT id, name, level FROM ranks WHERE program_id = 2 ORDER BY level`);
+
+  // ── Derived stats ──
+  const mbStatusMap = {};
+  eagleMBs.forEach(m => { mbStatusMap[m.name] = m.status; });
+  const { slotsDone, slotsInProg } = calcEagleSlots(mbStatusMap);
+  const slotPct = Math.round(slotsDone * 100 / EAGLE_SLOT_COUNT);
+
+  const nextDone  = nextReqs.filter(r => r.completed).length;
+  const nextTotal = nextReqs.length;
+  const nextPct   = nextTotal > 0 ? Math.round(nextDone * 100 / nextTotal) : 0;
+  const nextName  = nextReqs.length > 0 ? nextReqs[0].next_rank_name : null;
+
+  const earnedMBs    = allMBs.filter(m => m.status === 'completed');
+  const inProgMBs    = allMBs.filter(m => m.status !== 'completed');
+
+  const earnedRankSet = new Set(rankHistory.filter(r => r.status === 'completed').map(r => r.advancement_name));
+  const curLevel      = ov.rank_level || 0;
+
+  // ── Sidebar meta ──
+  document.getElementById('scout-meta').innerHTML = `
+    <div class="scout-meta-card">
+      <div class="rank-badge">${esc(ov.current_rank)}</div>
+      ${ov.patrol ? `<div style="margin-top:6px"><span class="pill pill-blue" style="font-size:0.75rem">⚑ ${esc(ov.patrol)}</span></div>` : ''}
+      ${ov.last_rank_date ? `<div>Rank earned: ${fmtDate(ov.last_rank_date)}</div>` : ''}
+      ${ov.leadership_days ? `<div>Leadership: ${ov.leadership_days} days</div>` : ''}
+      ${ov.last_synced_at ? `<div>Synced: ${fmtDt(ov.last_synced_at)}</div>` : ''}
+    </div>`;
+
+  // ── Render ──
+  document.getElementById('scout-content').innerHTML = `
+
+    <!-- Stat Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Current Rank</div>
+        <div class="stat-value" style="font-size:1.3rem;line-height:1.2">${esc(ov.current_rank)}</div>
+        <div class="stat-sub">${ov.last_rank_date ? 'Earned ' + fmtDate(ov.last_rank_date) : 'No date recorded'}</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="stat-label">Eagle Req. Slots</div>
+        <div class="stat-value">${slotsDone}<span style="font-size:1rem;font-weight:500"> / ${EAGLE_SLOT_COUNT}</span></div>
+        <div class="prog-bar"><div class="prog-fill gold" style="width:${slotPct}%"></div></div>
+        <div class="stat-sub">${slotPct}% · ${ov.total_mbs || 0}/${EAGLE_TOTAL_MBS} total MBs${slotsInProg ? ' · ' + slotsInProg + ' slot' + (slotsInProg > 1 ? 's' : '') + ' in progress' : ''}</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Total Merit Badges</div>
+        <div class="stat-value">${ov.total_mbs || 0}</div>
+        <div class="stat-sub">${ov.mbs_in_progress || 0} in progress</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">${nextName ? 'Next: ' + nextName : 'Next Rank'}</div>
+        ${nextTotal > 0
+          ? `<div class="stat-value">${nextPct}%</div>
+             <div class="prog-bar"><div class="prog-fill" style="width:${nextPct}%"></div></div>
+             <div class="stat-sub">${nextDone} / ${nextTotal} requirements done</div>`
+          : `<div class="stat-value" style="font-size:1.3rem">—</div>
+             <div class="stat-sub">No requirement data · run sync-scouts</div>`}
+      </div>
+    </div>
+
+    <!-- Rank Pipeline -->
+    <div class="panel panel-full" style="margin-bottom:18px">
+      <div class="panel-header"><span class="panel-icon">🏅</span><h2>Rank Progress</h2></div>
+      <div class="panel-body">
+        <div class="pipeline-wrap">
+          <div class="pipeline">
+            ${allRanks.map(rank => {
+              const done    = earnedRankSet.has(rank.name);
+              const current = rank.level === curLevel;
+              const next    = rank.level === curLevel + 1;
+              return `<div class="pipe-step ${done ? 'done' : ''}">
+                <div class="pipe-dot ${done ? 'done' : current ? 'current' : next ? 'next' : ''}">
+                  ${done ? '✓' : rank.level}
+                </div>
+                <div class="pipe-label ${done ? 'done' : current ? 'current' : ''}">${esc(rank.name)}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two-column panels -->
+    <div class="panels-grid">
+
+      <!-- Eagle MB Checklist -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">⭐</span>
+          <h2>Eagle Merit Badge Checklist</h2>
+          <span class="pill pill-gold" style="margin-left:auto">${slotsDone} / ${EAGLE_SLOT_COUNT} slots · ${ov.total_mbs || 0}/${EAGLE_TOTAL_MBS} MBs</span>
+        </div>
+        <div class="panel-body">
+          <!-- 11 Required badges -->
+          <div class="choice-section-label">Required — all 11 must be earned</div>
+          <div class="eagle-grid">
+            ${EAGLE_MANDATORY.map(name => {
+              const mb = eagleMBs.find(m => m.name === name) || { name, status: 'needed', date_completed: null };
+              const prog = eagleProgMap[name];
+              const progStr = (prog && prog.total > 0) ? `<span style="font-size:0.65rem;opacity:0.75;margin-left:4px">${prog.done}/${prog.total}</span>` : '';
+              return `<div class="eagle-item ${mb.status === 'completed' ? 'earned' : mb.status === 'in_progress' ? 'progress' : 'needed'}" style="cursor:pointer" onclick="showMBDetail(${esc(JSON.stringify(name))})">
+                <span class="ei-icon">${mb.status === 'completed' ? '✅' : mb.status === 'in_progress' ? '🔄' : '○'}</span>
+                <span>${esc(name)}${mb.date_completed && mb.status === 'completed' ? `<br><span style="font-size:0.65rem;opacity:0.7">${fmtDate(mb.date_completed)}</span>` : progStr ? `<br>${progStr}` : ''}</span>
+              </div>`;
+            }).join('')}
+          </div>
+          <!-- 3 Choice groups -->
+          <div class="choice-section-label" style="margin-top:16px">Choose One from Each Group — 3 additional slots</div>
+          ${EAGLE_CHOICE_GROUPS.map(group => {
+            const gMBs = group.badges.map(name => {
+              const mb = eagleMBs.find(m => m.name === name) || { name, status: 'needed', date_completed: null };
+              return { ...mb, name };
+            });
+            const satisfied  = gMBs.some(m => m.status === 'completed');
+            const inProgress = !satisfied && gMBs.some(m => m.status === 'in_progress');
+            const cls   = satisfied ? 'cg-satisfied' : inProgress ? 'cg-progress' : '';
+            const icon  = satisfied ? '✅' : inProgress ? '🔄' : '○';
+            const label = satisfied ? 'Satisfied' : inProgress ? 'In Progress' : 'Not Yet Earned';
+            return `<div class="choice-group ${cls}">
+              <div class="choice-group-header">
+                <span>${icon}</span>
+                <span>${esc(group.label)}</span>
+                <span class="pill ${satisfied ? 'pill-green' : inProgress ? 'pill-gold' : 'pill-gray'}" style="margin-left:auto">${label}</span>
+              </div>
+              <div class="choice-group-options">
+                ${gMBs.map(mb => {
+                  const prog = eagleProgMap[mb.name];
+                  const progStr = (prog && prog.total > 0) ? `<span style="font-size:0.65rem;opacity:0.75;margin-left:4px">${prog.done}/${prog.total}</span>` : '';
+                  return `<div class="eagle-item ${mb.status === 'completed' ? 'earned' : mb.status === 'in_progress' ? 'progress' : 'needed'}" style="flex:1;min-width:120px;cursor:pointer" onclick="showMBDetail(${esc(JSON.stringify(mb.name))})">
+                    <span class="ei-icon">${mb.status === 'completed' ? '✅' : mb.status === 'in_progress' ? '🔄' : '○'}</span>
+                    <span>${esc(mb.name)}${mb.date_completed && mb.status === 'completed' ? `<br><span style="font-size:0.65rem;opacity:0.7">${fmtDate(mb.date_completed)}</span>` : progStr ? `<br>${progStr}` : ''}</span>
+                  </div>`;
+                }).join('')}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Next Rank Requirements -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">📋</span>
+          <h2>${nextName ? 'Requirements for ' + esc(nextName) : 'Next Rank Requirements'}</h2>
+          ${nextTotal > 0
+            ? `<span class="pill ${nextPct === 100 ? 'pill-green' : 'pill-blue'}" style="margin-left:auto">${nextDone}/${nextTotal}</span>`
+            : ''}
+        </div>
+        <div class="panel-body">
+          ${nextReqs.length > 0
+            ? `<ul class="req-list">${nextReqs.map(r => `
+                <li class="req-item">
+                  <div class="req-circle ${r.completed ? 'done' : 'todo'}">${r.completed ? '✓' : ''}</div>
+                  <div style="flex:1;min-width:0">
+                    <div style="display:flex;gap:6px;align-items:baseline;flex-wrap:wrap">
+                      ${r.requirement_number ? `<span class="req-num">${esc(r.requirement_number)}</span>` : ''}
+                      <span>${esc(r.desc || r.full_name || '')}</span>
+                    </div>
+                    ${r.completed && r.date_completed ? `<div class="req-date">✓ ${fmtDate(r.date_completed)}</div>` : ''}
+                  </div>
+                </li>`).join('')}</ul>`
+            : `<div class="no-data">No requirement data — run <code>scouting sync-scouts</code> to populate</div>`}
+        </div>
+      </div>
+
+      <!-- Merit Badge List -->
+      <div class="panel panel-full">
+        <div class="panel-header">
+          <span class="panel-icon">🎖️</span>
+          <h2>Merit Badges</h2>
+          <div style="margin-left:auto;display:flex;gap:6px">
+            <span class="pill pill-green">${earnedMBs.length} earned</span>
+            <span class="pill pill-gold">${inProgMBs.length} in progress</span>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="mini-tabs">
+            <button class="mini-tab active" onclick="filterMBTab('all',this)">All (${allMBs.length})</button>
+            <button class="mini-tab" onclick="filterMBTab('completed',this)">Earned (${earnedMBs.length})</button>
+            <button class="mini-tab" onclick="filterMBTab('in_progress',this)">In Progress (${inProgMBs.length})</button>
+          </div>
+          ${allMBs.length > 0
+            ? `<div class="tbl-wrap">
+                <table class="sortable">
+                  <thead><tr><th>Merit Badge</th><th>Status</th><th>Started</th><th>Completed</th><th></th></tr></thead>
+                  <tbody id="mb-tbody">
+                    ${allMBs.map(mb => `
+                      <tr data-status="${mb.status}" class="clickable-row" onclick="showMBDetail(${esc(JSON.stringify(mb.merit_badge_name))})">
+                        <td><span class="mb-name-link">${esc(mb.merit_badge_name)}</span></td>
+                        <td><span class="pill ${mb.status === 'completed' ? 'pill-green' : 'pill-gold'}">${mb.status === 'completed' ? 'Earned' : 'In Progress'}</span></td>
+                        <td>${mb.date_started ? fmtDate(mb.date_started) : '—'}</td>
+                        <td>${mb.date_completed ? fmtDate(mb.date_completed) : '—'}</td>
+                        <td style="color:var(--muted);font-size:0.8rem">›</td>
+                      </tr>`).join('')}
+                  </tbody>
+                </table>
+              </div>`
+            : `<div class="no-data">No merit badge data — run <code>scouting sync-scouts</code></div>`}
+        </div>
+      </div>
+
+      <!-- Leadership -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">🦅</span>
+          <h2>Leadership Positions</h2>
+          <span class="pill pill-blue" style="margin-left:auto">${leadership.length}</span>
+        </div>
+        <div class="panel-body no-pad">
+          ${leadership.length > 0
+            ? `<div class="tbl-wrap">
+                <table class="sortable">
+                  <thead><tr><th>Position</th><th>Start</th><th>End</th><th>Days</th><th>Status</th></tr></thead>
+                  <tbody>
+                    ${leadership.map(l => `
+                      <tr>
+                        <td><strong>${esc(l.position)}</strong>${l.patrol ? `<br><span style="font-size:0.7rem;color:var(--muted)">${esc(l.patrol)}</span>` : ''}</td>
+                        <td>${fmtDate(l.start_date)}</td>
+                        <td>${l.end_date ? fmtDate(l.end_date) : '<span class="pill pill-green">Active</span>'}</td>
+                        <td>${l.days_in_position || '—'}</td>
+                        <td><span class="pill ${l.approved ? 'pill-green' : 'pill-gray'}">${l.approved ? 'Approved' : 'Pending'}</span></td>
+                      </tr>`).join('')}
+                  </tbody>
+                </table>
+              </div>`
+            : `<div class="no-data">No leadership positions recorded</div>`}
+        </div>
+      </div>
+
+      <!-- Rank History -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">📅</span>
+          <h2>Rank History</h2>
+        </div>
+        <div class="panel-body no-pad">
+          ${rankHistory.length > 0
+            ? `<div class="tbl-wrap">
+                <table class="sortable">
+                  <thead><tr><th>Rank</th><th>Status</th><th>Date Earned</th></tr></thead>
+                  <tbody>
+                    ${rankHistory.map(r => `
+                      <tr>
+                        <td>${esc(r.advancement_name)}</td>
+                        <td><span class="pill ${r.status === 'completed' ? 'pill-green' : 'pill-gold'}">${r.status}</span></td>
+                        <td>${r.date_completed ? fmtDate(r.date_completed) : '—'}</td>
+                      </tr>`).join('')}
+                  </tbody>
+                </table>
+              </div>`
+            : `<div class="no-data">No rank history — run <code>scouting sync-scouts</code></div>`}
+        </div>
+      </div>
+
+    </div><!-- /panels-grid -->
+  `;
+}
+
+function filterMBTab(status, btn) {
+  document.querySelectorAll('.mini-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  const rows = document.querySelectorAll('#mb-tbody tr');
+  rows.forEach(row => {
+    row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
+  });
+}
+
+// ─── Troop View ───────────────────────────────────────────────────────────────
+function loadTroopView() {
+  const n = (q1('SELECT COUNT(*) AS n FROM scouts') || {n: 0}).n;
+  if (n === 0) {
+    document.getElementById('troop-content').innerHTML =
+      '<div class="empty-state"><div class="ei">⚜️</div><p>No Scouts found in the database.</p></div>';
+    return;
+  }
+
+  const eagleTracked = EAGLE_SLOT_COUNT; // 14 slots: 11 mandatory + 3 choice groups
+  const totalMBs     = (q1('SELECT COUNT(*) AS n FROM scout_merit_badges WHERE status="completed"') || {n: 0}).n;
+  const inProgMBs    = (q1('SELECT COUNT(*) AS n FROM scout_merit_badges WHERE status="in_progress"') || {n: 0}).n;
+
+  const rankDist = q(`
+    SELECT r.name AS rank_name, r.level, COUNT(s.user_id) AS scout_count
+    FROM ranks r LEFT JOIN scouts s ON s.current_rank_id = r.id
+    WHERE r.program_id = 2
+    GROUP BY r.id ORDER BY r.level`);
+
+  const eagleGaps = q(`
+    SELECT mb.name, COUNT(s.user_id) AS scouts_needing,
+      ROUND(COUNT(s.user_id)*100.0/MAX(?,1),1) AS pct_needing,
+      SUM(CASE WHEN smb_p.status='in_progress' THEN 1 ELSE 0 END) AS in_progress_count
+    FROM merit_badges mb
+    CROSS JOIN scouts s
+    LEFT JOIN scout_merit_badges smb
+      ON smb.scout_user_id=s.user_id AND smb.merit_badge_name=mb.name AND smb.status='completed'
+    LEFT JOIN scout_merit_badges smb_p
+      ON smb_p.scout_user_id=s.user_id AND smb_p.merit_badge_name=mb.name AND smb_p.status='in_progress'
+    WHERE smb.id IS NULL AND mb.is_eagle_required=1 AND mb.active=1
+    GROUP BY mb.name ORDER BY scouts_needing DESC`, [n]);
+
+  const allMBGaps = q(`
+    SELECT mb.name, mb.is_eagle_required, COUNT(s.user_id) AS scouts_needing,
+      ROUND(COUNT(s.user_id)*100.0/MAX(?,1),1) AS pct_needing
+    FROM merit_badges mb
+    CROSS JOIN scouts s
+    LEFT JOIN scout_merit_badges smb
+      ON smb.scout_user_id=s.user_id AND smb.merit_badge_name=mb.name AND smb.status='completed'
+    WHERE smb.id IS NULL AND mb.active=1
+    GROUP BY mb.name ORDER BY scouts_needing DESC LIMIT 20`, [n]);
+
+  const closestToRank = q(`
+    WITH nr AS (
+      SELECT s.user_id,
+        TRIM(COALESCE(s.first_name,'')||' '||COALESCE(s.last_name,'')) AS scout_name,
+        cr.name AS current_rank, COALESCE(cr.level,0) AS cur_lv,
+        nxt.id AS next_id, nxt.name AS next_rank_name
+      FROM scouts s
+      LEFT JOIN ranks cr ON cr.id=s.current_rank_id
+      INNER JOIN ranks nxt ON nxt.program_id=2 AND nxt.level=COALESCE(cr.level,0)+1
+    ),
+    rc AS (
+      SELECT nr.user_id, nr.scout_name, nr.current_rank, nr.next_rank_name,
+        COUNT(r.id) AS total_req,
+        COALESCE(SUM(CASE WHEN src.completed=1 THEN 1 ELSE 0 END),0) AS done_req
+      FROM nr
+      INNER JOIN requirements r ON r.rank_id=nr.next_id AND r.required=1 AND r.parent_requirement_id IS NULL
+      LEFT JOIN scout_requirement_completions src ON src.scout_user_id=nr.user_id AND src.requirement_id=r.id
+      GROUP BY nr.user_id
+    )
+    SELECT user_id, scout_name, current_rank, next_rank_name, total_req, done_req,
+      total_req-done_req AS remaining,
+      ROUND(done_req*100.0/MAX(total_req,1),1) AS pct_complete
+    FROM rc WHERE total_req > 0
+    ORDER BY pct_complete DESC, remaining ASC LIMIT 20`);
+
+  const activityPlanner = q(`
+    SELECT mb.name AS activity_name, mb.is_eagle_required,
+      COUNT(s.user_id) AS scouts_benefiting,
+      ROUND(COUNT(s.user_id)*100.0/MAX(?,1),1) AS pct_benefiting
+    FROM merit_badges mb
+    CROSS JOIN scouts s
+    LEFT JOIN scout_merit_badges smb
+      ON smb.scout_user_id=s.user_id AND smb.merit_badge_name=mb.name AND smb.status='completed'
+    WHERE smb.id IS NULL AND mb.active=1
+    GROUP BY mb.name HAVING pct_benefiting >= 40
+    ORDER BY mb.is_eagle_required DESC, pct_benefiting DESC LIMIT 20`, [n]);
+
+  const rosterPatrolSel = hasPatrolCol ? 'COALESCE(s.patrol,NULL) AS patrol,' : 'NULL AS patrol,';
+  const roster = q(`
+    SELECT TRIM(COALESCE(s.first_name,'')||' '||COALESCE(s.last_name,'')) AS scout_name,
+      s.user_id, ${rosterPatrolSel}
+      COALESCE(r.name,'New Scout') AS current_rank, COALESCE(r.level,0) AS rank_level,
+      (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='completed') AS total_mbs,
+      (SELECT COUNT(*) FROM scout_merit_badges smb
+         JOIN merit_badges mb ON mb.name=smb.merit_badge_name
+         WHERE smb.scout_user_id=s.user_id AND smb.status='completed' AND mb.is_eagle_required=1) AS eagle_mbs,
+      (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='in_progress') AS in_prog,
+      (SELECT COUNT(*) FROM scout_leadership sl WHERE sl.scout_user_id=s.user_id AND sl.approved=1) AS approved_positions
+    FROM scouts s LEFT JOIN ranks r ON r.id=s.current_rank_id
+    ORDER BY COALESCE(r.level,0) DESC, scout_name`);
+
+  // Per-scout Eagle slot counts (for pipeline stats and roster)
+  const eagleSlotData = q(`
+    SELECT s.user_id,
+      (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='completed'
+         AND smb.merit_badge_name IN ('Camping','Citizenship in the Community','Citizenship in the Nation',
+           'Citizenship in Society','Citizenship in the World','Communication','Cooking',
+           'Family Life','First Aid','Personal Fitness','Personal Management')) AS mandatory_done,
+      CASE WHEN (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='completed'
+           AND smb.merit_badge_name IN ('Emergency Preparedness','Lifesaving')) >= 1 THEN 1 ELSE 0 END AS group_a,
+      CASE WHEN (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='completed'
+           AND smb.merit_badge_name IN ('Environmental Science','Sustainability')) >= 1 THEN 1 ELSE 0 END AS group_b,
+      CASE WHEN (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='completed'
+           AND smb.merit_badge_name IN ('Swimming','Hiking','Cycling')) >= 1 THEN 1 ELSE 0 END AS group_c
+    FROM scouts s`);
+
+  const slotByUser = {};
+  eagleSlotData.forEach(r => { slotByUser[r.user_id] = r.mandatory_done + r.group_a + r.group_b + r.group_c; });
+
+  // Patrol groupings (built from roster which already has patrol)
+  const patrolGroups = {};
+  roster.forEach(r => {
+    const p = r.patrol || 'Unassigned';
+    if (!patrolGroups[p]) patrolGroups[p] = [];
+    patrolGroups[p].push(r);
+  });
+  const patrolNames = Object.keys(patrolGroups).sort((a, b) =>
+    a === 'Unassigned' ? 1 : b === 'Unassigned' ? -1 : a.localeCompare(b));
+
+  // Troop-level choice group satisfaction stats
+  const choiceGroupTroopStats = EAGLE_CHOICE_GROUPS.map((group, i) => {
+    const key = ['group_a', 'group_b', 'group_c'][i];
+    const satisfied = eagleSlotData.filter(r => r[key] === 1).length;
+    const perBadge = group.badges.map(badge => {
+      const cnt  = (q1(`SELECT COUNT(*) AS n FROM scout_merit_badges WHERE merit_badge_name=? AND status='completed'`, [badge]) || {n:0}).n;
+      const prog = (q1(`SELECT COUNT(*) AS n FROM scout_merit_badges WHERE merit_badge_name=? AND status='in_progress'`, [badge]) || {n:0}).n;
+      return { badge, cnt, prog };
+    });
+    return { label: group.label, satisfied, notSatisfied: n - satisfied,
+             pctSatisfied: n > 0 ? Math.round(satisfied * 100 / n) : 0, perBadge };
+  });
+
+  // Lookup: badge name → choice group index (0/1/2), for all choice-group badges
+  const choiceBadgeGroupIdx = {};
+  EAGLE_CHOICE_GROUPS.forEach((g, i) => g.badges.forEach(b => { choiceBadgeGroupIdx[b] = i; }));
+
+  // Scouts who have NOT yet satisfied each choice group
+  const groupUnsatisfied = [
+    eagleSlotData.filter(r => r.group_a === 0).length,
+    eagleSlotData.filter(r => r.group_b === 0).length,
+    eagleSlotData.filter(r => r.group_c === 0).length,
+  ];
+
+  // Activity planner: for choice-group badges replace the raw "doesn't have badge X"
+  // count with the true "group slot not yet filled" count, then re-filter and re-sort.
+  const activityPlannerAdj = activityPlanner
+    .map(a => {
+      const gi = choiceBadgeGroupIdx[a.activity_name];
+      if (gi !== undefined) {
+        const trueBenefiting = groupUnsatisfied[gi];
+        return { ...a, scouts_benefiting: trueBenefiting,
+                 pct_benefiting: Math.round(trueBenefiting * 100 / Math.max(n, 1)) };
+      }
+      return a;
+    })
+    .filter(a => a.pct_benefiting >= 40)
+    .sort((a, b) => b.is_eagle_required - a.is_eagle_required || b.pct_benefiting - a.pct_benefiting)
+    // Deduplicate choice groups: keep only the badge with the highest pct within each group
+    .filter((a, _, arr) => {
+      const gi = choiceBadgeGroupIdx[a.activity_name];
+      if (gi === undefined) return true;
+      const best = arr.find(x => choiceBadgeGroupIdx[x.activity_name] === gi);
+      return best === a;
+    });
+
+  // Stat card: top Eagle gap should be a mandatory badge, not a choice-group alternative
+  const topEagle    = eagleGaps.find(r => !(r.name in choiceBadgeGroupIdx));
+  const closeToRank = closestToRank.filter(r => r.pct_complete >= 50).length;
+  const avgMBs      = n > 0 ? (totalMBs / n).toFixed(1) : 0;
+  const eagleReady  = eagleSlotData.filter(r => r.mandatory_done === 11 && r.group_a === 1 && r.group_b === 1 && r.group_c === 1).length;
+  const avgSlots    = n > 0 ? (eagleSlotData.reduce((s,r) => s + r.mandatory_done + r.group_a + r.group_b + r.group_c, 0) / n).toFixed(1) : 0;
+
+  document.getElementById('troop-content').innerHTML = `
+
+    <!-- Summary Stat Cards -->
+    <div class="stats-grid" style="margin-bottom:20px">
+      <div class="stat-card">
+        <div class="stat-label">Total Scouts</div>
+        <div class="stat-value">${n}</div>
+        <div class="stat-sub">${rankDist.filter(r => r.scout_count > 0).length} active rank levels</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Merit Badges Earned</div>
+        <div class="stat-value">${totalMBs}</div>
+        <div class="stat-sub">avg ${avgMBs} per Scout · ${inProgMBs} in progress</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="stat-label">Top Eagle MB Gap</div>
+        <div class="stat-value" style="font-size:0.95rem;line-height:1.3">${topEagle ? `<a class="mb-name-link" style="color:inherit" onclick="showTroopMBDetail(${esc(JSON.stringify(topEagle.name))})">${esc(topEagle.name)}</a>` : '—'}</div>
+        <div class="stat-sub">${topEagle ? topEagle.scouts_needing + ' Scouts (' + topEagle.pct_needing + '%) need it' : 'No gap data'}</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-label">Close to Rank-Up</div>
+        <div class="stat-value">${closeToRank}</div>
+        <div class="stat-sub">Scouts ≥ 50% complete on next rank</div>
+      </div>
+    </div>
+
+    <div class="panels-grid">
+
+      <!-- Rank Distribution -->
+      <div class="panel">
+        <div class="panel-header"><span class="panel-icon">📊</span><h2>Rank Distribution</h2></div>
+        <div class="panel-body no-pad">
+          <div class="tbl-wrap">
+            <table class="sortable">
+              <thead><tr><th>Rank</th><th style="text-align:right">Scouts</th><th>Share of Troop</th></tr></thead>
+              <tbody>
+                ${rankDist.map(r => {
+                  const pct = n > 0 ? Math.round(r.scout_count * 100 / n) : 0;
+                  return `<tr ${r.scout_count > 0 ? 'class="bold-row"' : 'style="opacity:0.5"'}>
+                    <td>${esc(r.rank_name)}</td>
+                    <td style="text-align:right"><strong>${r.scout_count}</strong></td>
+                    <td class="bar-cell">
+                      <div class="bar-wrap">
+                        <div class="mini-bar"><div class="mini-fill" style="width:${pct}%"></div></div>
+                        <span class="bar-pct">${pct}%</span>
+                      </div>
+                    </td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Eagle MB Gap Analysis -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">⭐</span>
+          <h2>Eagle MB Gaps</h2>
+          <span style="font-size:0.72rem;color:var(--muted);margin-left:auto">Scouts who haven't yet filled each slot</span>
+        </div>
+        <div class="panel-body no-pad">
+          <!-- Required badges section -->
+          <div style="padding:10px 14px 4px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-weight:700;background:#fafafa;border-bottom:1px solid var(--border)">Required — 11 mandatory badges</div>
+          <div class="tbl-wrap">
+            <table class="sortable">
+              <thead><tr><th>Merit Badge</th><th style="text-align:right">Need</th><th>% of Troop</th><th>In Prog</th></tr></thead>
+              <tbody>
+                ${EAGLE_MANDATORY.map(name => {
+                  const row = eagleGaps.find(r => r.name === name);
+                  const need = row ? row.scouts_needing : 0;
+                  const pct  = row ? row.pct_needing : 0;
+                  const prog = row ? (row.in_progress_count || 0) : 0;
+                  return `<tr ${need > 0 && pct >= 50 ? 'class="bold-row"' : need === 0 ? 'style="opacity:0.45"' : ''}>
+                    <td><a class="mb-name-link" onclick="showTroopMBDetail(${esc(JSON.stringify(name))})">${esc(name)}</a></td>
+                    <td style="text-align:right"><strong>${need}</strong></td>
+                    <td class="bar-cell">
+                      <div class="bar-wrap">
+                        <div class="mini-bar"><div class="mini-fill gold" style="width:${pct}%"></div></div>
+                        <span class="bar-pct">${pct}%</span>
+                      </div>
+                    </td>
+                    <td>${prog > 0 ? `<span class="pill pill-gold">${prog}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+          <!-- Choice groups section -->
+          <div style="padding:10px 14px 4px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-weight:700;background:#fafafa;border-top:2px solid var(--border);border-bottom:1px solid var(--border)">Choose One from Each Group — 3 slots</div>
+          ${choiceGroupTroopStats.map(cg => `
+            <div class="cg-troop-row">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                <div>
+                  <span style="font-size:0.82rem;font-weight:700">${esc(cg.label)}</span>
+                  <div style="font-size:0.72rem;color:var(--muted);margin-top:2px">${cg.notSatisfied} Scout${cg.notSatisfied !== 1 ? 's' : ''} haven't satisfied this group yet</div>
+                </div>
+                <div class="bar-wrap" style="min-width:120px">
+                  <div class="mini-bar"><div class="mini-fill green" style="width:${cg.pctSatisfied}%"></div></div>
+                  <span class="bar-pct">${cg.pctSatisfied}% satisfied</span>
+                </div>
+              </div>
+              <div class="cg-troop-badges">
+                ${cg.perBadge.map(pb => `
+                  <div class="cg-badge-stat">
+                    <span class="cg-badge-name"><a class="mb-name-link" onclick="showTroopMBDetail(${esc(JSON.stringify(pb.badge))})">${esc(pb.badge)}</a></span>
+                    <span class="cg-badge-count">${pb.cnt}</span>
+                    <span class="cg-badge-sub">earned${pb.prog ? ' · ' + pb.prog + ' in prog' : ''}</span>
+                  </div>`).join('')}
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Scouts Closest to Next Rank -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">🎯</span>
+          <h2>Closest to Rank Advancement</h2>
+          <span style="font-size:0.72rem;color:var(--muted);margin-left:auto">fewest reqs remaining</span>
+        </div>
+        <div class="panel-body no-pad">
+          ${closestToRank.length > 0
+            ? `<div class="tbl-wrap">
+                <table class="sortable">
+                  <thead><tr><th>Scout</th><th>Working Toward</th><th>Progress</th><th>Left</th></tr></thead>
+                  <tbody>
+                    ${closestToRank.map(r => `
+                      <tr>
+                        <td><a class="scout-link" onclick="goToScout(${r.user_id})">${esc(r.scout_name)}</a></td>
+                        <td>
+                          ${esc(r.next_rank_name)}
+                          <div style="font-size:0.68rem;color:var(--muted)">${r.done_req}/${r.total_req} reqs</div>
+                        </td>
+                        <td class="bar-cell">
+                          <div class="bar-wrap">
+                            <div class="mini-bar">
+                              <div class="mini-fill ${r.pct_complete >= 80 ? 'green' : ''}" style="width:${r.pct_complete}%"></div>
+                            </div>
+                            <span class="bar-pct">${r.pct_complete}%</span>
+                          </div>
+                        </td>
+                        <td><span class="pill ${r.remaining === 0 ? 'pill-green' : r.remaining <= 2 ? 'pill-gold' : 'pill-gray'}">${r.remaining}</span></td>
+                      </tr>`).join('')}
+                  </tbody>
+                </table>
+              </div>`
+            : `<div class="no-data">No rank requirement data — run <code>scouting sync-scouts</code></div>`}
+        </div>
+      </div>
+
+      <!-- Group Activity Planner -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">📅</span>
+          <h2>Group Activity Planner</h2>
+          <span style="font-size:0.72rem;color:var(--muted);margin-left:auto">★ = Eagle-required · ≥ 40% of troop benefits</span>
+        </div>
+        <div class="panel-body no-pad">
+          ${activityPlannerAdj.length > 0
+            ? `<div class="tbl-wrap">
+                <table class="sortable">
+                  <thead><tr><th>Merit Badge Activity</th><th style="text-align:right">Scouts Benefit</th><th>Troop %</th></tr></thead>
+                  <tbody>
+                    ${activityPlannerAdj.map(a => `
+                      <tr ${a.is_eagle_required ? 'class="bold-row"' : ''}>
+                        <td>
+                          <a class="mb-name-link" onclick="showTroopMBDetail(${esc(JSON.stringify(a.activity_name))})">${esc(a.activity_name)}</a>
+                          ${a.is_eagle_required ? '<span class="star-marker"> ★</span>' : ''}
+                        </td>
+                        <td style="text-align:right">${a.scouts_benefiting}</td>
+                        <td class="bar-cell">
+                          <div class="bar-wrap">
+                            <div class="mini-bar">
+                              <div class="mini-fill ${a.is_eagle_required ? 'gold' : ''}" style="width:${a.pct_benefiting}%"></div>
+                            </div>
+                            <span class="bar-pct">${a.pct_benefiting}%</span>
+                          </div>
+                        </td>
+                      </tr>`).join('')}
+                  </tbody>
+                </table>
+              </div>`
+            : `<div class="no-data">No activities meet the 40% threshold — try running <code>scouting query plan --min-pct 30</code></div>`}
+        </div>
+      </div>
+
+      <!-- Most Needed Any MB (top 20) -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">📌</span>
+          <h2>Most Needed Merit Badges</h2>
+          <span style="font-size:0.72rem;color:var(--muted);margin-left:auto">all badges, not just Eagle-required</span>
+        </div>
+        <div class="panel-body no-pad">
+          <div class="tbl-wrap">
+            <table class="sortable">
+              <thead><tr><th>Merit Badge</th><th>Eagle</th><th style="text-align:right">Scouts Need</th><th>%</th></tr></thead>
+              <tbody>
+                ${allMBGaps.map(mb => `
+                  <tr>
+                    <td><a class="mb-name-link" onclick="showTroopMBDetail(${esc(JSON.stringify(mb.name))})">${esc(mb.name)}</a></td>
+                    <td>${mb.is_eagle_required ? '<span class="star-marker">★</span>' : ''}</td>
+                    <td style="text-align:right">${mb.scouts_needing}</td>
+                    <td class="bar-cell">
+                      <div class="bar-wrap">
+                        <div class="mini-bar">
+                          <div class="mini-fill ${mb.is_eagle_required ? 'gold' : ''}" style="width:${mb.pct_needing}%"></div>
+                        </div>
+                        <span class="bar-pct">${mb.pct_needing}%</span>
+                      </div>
+                    </td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Eagle Pipeline Summary -->
+      <div class="panel">
+        <div class="panel-header"><span class="panel-icon">🦅</span><h2>Eagle Pipeline</h2></div>
+        <div class="panel-body">
+          ${[
+            { label: 'Total Scouts in troop',                          value: n,           color: '',       key: 'all' },
+            { label: 'At Tenderfoot rank',                             value: roster.filter(r => r.rank_level === 2).length, color: 'blue',   key: 'tenderfoot' },
+            { label: 'At First Class rank',                            value: roster.filter(r => r.rank_level === 4).length, color: 'blue',   key: 'first_class' },
+            { label: 'At Star rank',                                   value: roster.filter(r => r.rank_level === 5).length, color: 'purple', key: 'star' },
+            { label: 'At Life rank',                                   value: roster.filter(r => r.rank_level === 6).length, color: 'gold',   key: 'life' },
+            { label: 'All 14 Eagle slots filled (MB requirement met)', value: eagleReady,  color: 'green',  key: 'eagle_ready' },
+            { label: 'Avg Eagle slots filled per Scout',               value: avgSlots,    color: '' },
+          ].map(row => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+              <span style="font-size:0.82rem">${row.key
+                ? `<a class="scout-link" onclick="showPipelineModal('${row.key}')">${row.label}</a>`
+                : row.label}</span>
+              <strong style="color:var(--${row.color || 'muted'});font-size:1rem">${row.value}</strong>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Scouts by Patrol -->
+      ${hasPatrolCol && patrolNames.length > 0 ? `
+      <div class="panel panel-full">
+        <div class="panel-header">
+          <span class="panel-icon">⚑</span>
+          <h2>Scouts by Patrol</h2>
+          <span class="pill pill-blue" style="margin-left:auto">${patrolNames.filter(p => p !== 'Unassigned').length} patrol${patrolNames.filter(p => p !== 'Unassigned').length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="panel-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px">
+          ${patrolNames.map(patrol => {
+            const members = patrolGroups[patrol];
+            return `<div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+              <div style="padding:8px 12px;background:#fafafa;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+                <strong style="font-size:0.82rem">${patrol === 'Unassigned' ? '<span style="color:var(--muted)">Unassigned</span>' : esc(patrol)}</strong>
+                <span class="pill pill-gray" style="font-size:0.68rem">${members.length}</span>
+              </div>
+              <div style="padding:6px 8px">
+                ${members.map(m => `
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 4px;border-radius:4px">
+                    <a class="scout-link" style="font-size:0.82rem" onclick="goToScout(${m.user_id})">${esc(m.scout_name)}</a>
+                    <span style="font-size:0.72rem;color:var(--muted);white-space:nowrap;margin-left:8px">${esc(m.current_rank)}</span>
+                  </div>`).join('')}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- Full Roster -->
+      <div class="panel panel-full">
+        <div class="panel-header">
+          <span class="panel-icon">📋</span>
+          <h2>Troop Roster</h2>
+          <span class="pill pill-blue" style="margin-left:auto">${roster.length} Scouts</span>
+        </div>
+        <div class="panel-body no-pad">
+          <div class="tbl-wrap">
+            <table class="sortable">
+              <thead>
+                <tr>
+                  <th>Scout</th>
+                  <th>Current Rank</th>
+                  ${hasPatrolCol ? '<th>Patrol</th>' : ''}
+                  <th style="text-align:right">Total MBs</th>
+                  <th>Eagle Slots</th>
+                  <th>Slot Progress</th>
+                  <th style="text-align:right">In Progress</th>
+                  <th style="text-align:right">Leadership</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${roster.map(r => {
+                  const slots = slotByUser[r.user_id] || 0;
+                  const epct  = Math.round(slots * 100 / EAGLE_SLOT_COUNT);
+                  return `<tr>
+                    <td><a class="scout-link" onclick="goToScout(${r.user_id})"><strong>${esc(r.scout_name)}</strong></a></td>
+                    <td>${esc(r.current_rank)}</td>
+                    ${hasPatrolCol ? `<td>${r.patrol ? `<span class="pill pill-blue" style="font-size:0.72rem">⚑ ${esc(r.patrol)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>` : ''}
+                    <td style="text-align:right">${r.total_mbs}</td>
+                    <td>${slots}<span style="color:var(--muted)"> / ${EAGLE_SLOT_COUNT}</span></td>
+                    <td class="bar-cell">
+                      <div class="bar-wrap">
+                        <div class="mini-bar">
+                          <div class="mini-fill ${epct >= 100 ? 'green' : 'gold'}" style="width:${epct}%"></div>
+                        </div>
+                        <span class="bar-pct">${epct}%</span>
+                      </div>
+                    </td>
+                    <td style="text-align:right"><span class="pill pill-gold">${r.in_prog}</span></td>
+                    <td style="text-align:right">${r.approved_positions > 0 ? `<span class="pill pill-green">${r.approved_positions}</span>` : '<span class="pill pill-gray">0</span>'}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /panels-grid -->
+  `;
+}
+
+// ─── MB Detail Modal ──────────────────────────────────────────────────────────
+
+function showMBDetail(mbName) {
+  if (!db || !currentScoutId) return;
+
+  // MB record for this scout (may be null if not started)
+  const mbRow = q1(`
+    SELECT merit_badge_name, status, date_completed, date_started,
+      CAST(json_extract(raw_json, '$.id') AS INTEGER) AS api_id
+    FROM scout_merit_badges
+    WHERE scout_user_id = ? AND merit_badge_name = ?`, [currentScoutId, mbName]);
+
+  // If this scout has no record, try to find the api_id from any scout (shared definitions)
+  let apiId = mbRow ? mbRow.api_id : null;
+  if (!apiId) {
+    const anyRow = q1(`
+      SELECT CAST(json_extract(raw_json, '$.id') AS INTEGER) AS api_id
+      FROM scout_merit_badges
+      WHERE merit_badge_name = ? AND raw_json IS NOT NULL
+      LIMIT 1`, [mbName]);
+    apiId = anyRow ? anyRow.api_id : null;
+  }
+
+  // Fetch requirements with per-scout completion status
+  const reqs = apiId ? q(`
+    SELECT mr.id, mr.requirement_number, mr.name AS req_name,
+      mr.required, mr.parent_requirement_id, mr.children_required, mr.sort_order,
+      COALESCE(smrc.completed, 0) AS completed, smrc.date_completed
+    FROM mb_requirements mr
+    LEFT JOIN scout_mb_requirement_completions smrc
+      ON smrc.mb_requirement_id = mr.id AND smrc.scout_user_id = ?
+    WHERE mr.mb_api_id = ?
+    ORDER BY mr.sort_order, mr.requirement_number`, [currentScoutId, apiId]) : [];
+
+  // ── Populate modal header ──
+  document.getElementById('mb-modal-title').textContent = mbName;
+
+  const status        = mbRow ? mbRow.status : null;
+  const dateStarted   = mbRow ? mbRow.date_started : null;
+  const dateCompleted = mbRow ? mbRow.date_completed : null;
+  document.getElementById('mb-modal-status').innerHTML =
+    status
+      ? `<span class="pill ${status === 'completed' ? 'pill-green' : 'pill-gold'}">${status === 'completed' ? 'Earned' : 'In Progress'}</span>
+         ${dateStarted   ? `<span style="color:var(--muted);font-size:0.79rem">Started ${fmtDate(dateStarted)}</span>` : ''}
+         ${dateCompleted ? `<span style="color:var(--muted);font-size:0.79rem">Completed ${fmtDate(dateCompleted)}</span>` : ''}`
+      : '<span class="pill pill-gray">Not started</span>';
+
+  // ── Progress bar ──
+  let progressHTML = '';
+  if (reqs.length > 0) {
+    const hasAnyDone = reqs.some(r => r.completed == 1);
+    if (status === 'completed' && !hasAnyDone) {
+      progressHTML = `<div style="padding:9px 20px;background:#f0fdf4;border-bottom:1px solid #bbf7d0;font-size:0.8rem;color:var(--green-light)">
+        ✅ Badge earned — re-run <code>scouting sync-scouts</code> to populate per-requirement detail.
+      </div>`;
+    } else {
+      const tree = buildReqTree(reqs);
+      const roots = tree.filter(n => n.requirement_number || n.required == 1 || (n.children && n.children.length > 0));
+      const doneCount = roots.filter(n => isNodeDone(n)).length;
+      const pct = roots.length > 0 ? Math.round(doneCount * 100 / roots.length) : 0;
+      progressHTML = `<div style="padding:9px 20px;border-bottom:1px solid var(--border);background:#fafafa">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1"><div class="prog-bar" style="margin:0"><div class="prog-fill ${status === 'completed' ? 'green' : ''}" style="width:${pct}%"></div></div></div>
+          <span style="font-size:0.8rem;color:var(--muted);white-space:nowrap">${doneCount} / ${roots.length} requirements done</span>
+        </div>
+      </div>`;
+    }
+  } else {
+    progressHTML = `<div style="padding:9px 20px;background:#fefce8;border-bottom:1px solid #fde047;font-size:0.8rem;color:#713f12">
+      ${apiId
+        ? 'No per-requirement data found. Run <code>scouting sync-scouts</code> (without --skip-reqs) to sync it.'
+        : 'Requirement definitions not available. These are fetched while syncing in-progress merit badges.'}
+    </div>`;
+  }
+  document.getElementById('mb-modal-progress').innerHTML = progressHTML;
+
+  // ── Render requirement tree ──
+  const tree = buildReqTree(reqs);
+  document.getElementById('mb-modal-body').innerHTML = tree.length > 0
+    ? tree.map(n => renderReqNode(n, 0)).join('')
+    : `<div class="no-data" style="padding:32px">No requirement details to display.</div>`;
+
+  document.getElementById('mb-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMBModal() {
+  document.getElementById('mb-modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ─── Troop MB Participation Modal ────────────────────────────────────────────
+
+function showTroopMBDetail(mbName) {
+  if (!db) return;
+
+  const mbInfo  = q1(`SELECT is_eagle_required FROM merit_badges WHERE name = ?`, [mbName]);
+  const scouts  = q(`
+    SELECT
+      TRIM(COALESCE(s.first_name,'') || ' ' || COALESCE(s.last_name,'')) AS scout_name,
+      s.user_id, smb.status, smb.date_started, smb.date_completed
+    FROM scout_merit_badges smb
+    JOIN scouts s ON s.user_id = smb.scout_user_id
+    WHERE smb.merit_badge_name = ?
+    ORDER BY
+      CASE smb.status WHEN 'completed' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END,
+      s.last_name, s.first_name`, [mbName]);
+
+  document.getElementById('troop-mb-modal-title').textContent = mbName;
+
+  const completed = scouts.filter(s => s.status === 'completed').length;
+  const inProg    = scouts.filter(s => s.status === 'in_progress').length;
+  const eagleTag  = mbInfo && mbInfo.is_eagle_required
+    ? ' · <span class="star-marker">★ Eagle-required</span>' : '';
+  document.getElementById('troop-mb-modal-sub').innerHTML =
+    `${scouts.length} Scout${scouts.length !== 1 ? 's' : ''} participated · ` +
+    `<strong>${completed}</strong> completed · <strong>${inProg}</strong> in progress${eagleTag}`;
+
+  document.getElementById('troop-mb-modal-body').innerHTML = scouts.length === 0
+    ? '<div class="no-data">No Scouts have started this merit badge.</div>'
+    : `<table class="sortable" style="margin-top:4px">
+        <thead><tr><th>Scout</th><th>Status</th><th>Started</th><th>Completed</th></tr></thead>
+        <tbody>
+          ${scouts.map(s => `
+            <tr>
+              <td><a class="scout-link" onclick="closeTroopMBModal();goToScout(${s.user_id})">${esc(s.scout_name)}</a></td>
+              <td><span class="pill ${s.status === 'completed' ? 'pill-green' : 'pill-gold'}">${s.status === 'in_progress' ? 'In Progress' : 'Completed'}</span></td>
+              <td>${s.date_started  ? fmtDate(s.date_started)  : '—'}</td>
+              <td>${s.date_completed ? fmtDate(s.date_completed) : '—'}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+
+  document.getElementById('troop-mb-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeTroopMBModal() {
+  document.getElementById('troop-mb-modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ─── Eagle Pipeline Modal ─────────────────────────────────────────────────────
+
+const PIPELINE_LABELS = {
+  all:         'All Scouts',
+  tenderfoot:  'At Tenderfoot Rank',
+  first_class: 'At First Class Rank',
+  star:        'At Star Rank',
+  life:        'At Life Rank',
+  eagle_ready: 'Eagle MB Requirement Met (14 Slots Filled)',
+};
+
+function showPipelineModal(key) {
+  if (!db) return;
+
+  // Full scout stats including next-rank progress
+  const pmPatrolSel = hasPatrolCol ? 's.patrol,' : 'NULL AS patrol,';
+  const scouts = q(`
+    WITH nr AS (
+      SELECT s.user_id,
+        TRIM(COALESCE(s.first_name,'')||' '||COALESCE(s.last_name,'')) AS scout_name,
+        COALESCE(r.name,'New Scout') AS current_rank,
+        COALESCE(r.level,0) AS rank_level,
+        ${pmPatrolSel}
+        nxt.id AS next_id, nxt.name AS next_rank_name
+      FROM scouts s
+      LEFT JOIN ranks r ON r.id=s.current_rank_id
+      LEFT JOIN ranks nxt ON nxt.program_id=2 AND nxt.level=COALESCE(r.level,0)+1
+    )
+    SELECT nr.user_id, nr.scout_name, nr.current_rank, nr.rank_level,
+      nr.patrol, nr.next_rank_name,
+      COUNT(r.id) AS total_req,
+      COALESCE(SUM(CASE WHEN src.completed=1 THEN 1 ELSE 0 END),0) AS done_req,
+      (SELECT COUNT(*) FROM scout_merit_badges smb
+         WHERE smb.scout_user_id=nr.user_id AND smb.status='completed') AS total_mbs,
+      (SELECT COUNT(*) FROM scout_merit_badges smb
+         WHERE smb.scout_user_id=nr.user_id AND smb.status='in_progress') AS in_prog,
+      (SELECT COUNT(*) FROM scout_leadership sl
+         WHERE sl.scout_user_id=nr.user_id AND sl.approved=1) AS leadership
+    FROM nr
+    LEFT JOIN requirements r ON r.rank_id=nr.next_id AND r.required=1 AND r.parent_requirement_id IS NULL
+    LEFT JOIN scout_requirement_completions src ON src.scout_user_id=nr.user_id AND src.requirement_id=r.id
+    GROUP BY nr.user_id
+    ORDER BY nr.rank_level DESC, nr.scout_name`);
+
+  // Eagle slot counts per scout
+  const slotRows = q(`
+    SELECT s.user_id,
+      (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='completed'
+         AND smb.merit_badge_name IN ('Camping','Citizenship in the Community','Citizenship in the Nation',
+           'Citizenship in Society','Citizenship in the World','Communication','Cooking',
+           'Family Life','First Aid','Personal Fitness','Personal Management')) AS mandatory_done,
+      CASE WHEN (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='completed'
+           AND smb.merit_badge_name IN ('Emergency Preparedness','Lifesaving')) >= 1 THEN 1 ELSE 0 END AS group_a,
+      CASE WHEN (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='completed'
+           AND smb.merit_badge_name IN ('Environmental Science','Sustainability')) >= 1 THEN 1 ELSE 0 END AS group_b,
+      CASE WHEN (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='completed'
+           AND smb.merit_badge_name IN ('Swimming','Hiking','Cycling')) >= 1 THEN 1 ELSE 0 END AS group_c
+    FROM scouts s`);
+
+  const slotByUser = {};
+  slotRows.forEach(r => { slotByUser[r.user_id] = r.mandatory_done + r.group_a + r.group_b + r.group_c; });
+
+  const filters = {
+    all:         s => true,
+    tenderfoot:  s => s.rank_level === 2,
+    first_class: s => s.rank_level === 4,
+    star:        s => s.rank_level === 5,
+    life:        s => s.rank_level === 6,
+    eagle_ready: s => (slotByUser[s.user_id] || 0) >= EAGLE_SLOT_COUNT,
+  };
+
+  const filtered = scouts.filter(filters[key] || (() => true));
+
+  document.getElementById('pipeline-modal-title').textContent = PIPELINE_LABELS[key] || key;
+  document.getElementById('pipeline-modal-sub').textContent =
+    `${filtered.length} Scout${filtered.length !== 1 ? 's' : ''}`;
+
+  document.getElementById('pipeline-modal-body').innerHTML = filtered.length === 0
+    ? '<div class="no-data">No Scouts match this filter.</div>'
+    : `<table class="sortable">
+        <thead>
+          <tr>
+            <th>Scout</th><th>Current Rank</th>${hasPatrolCol ? '<th>Patrol</th>' : ''}<th>Next Rank</th>
+            <th>Rank Progress</th><th>Eagle Slots</th>
+            <th style="text-align:right">Total MBs</th>
+            <th style="text-align:right">In Prog</th>
+            <th style="text-align:right">Leadership</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map(s => {
+            const slots = slotByUser[s.user_id] || 0;
+            const epct  = Math.round(slots * 100 / EAGLE_SLOT_COUNT);
+            const rpct  = s.total_req > 0 ? Math.round(s.done_req * 100 / s.total_req) : null;
+            return `<tr>
+              <td><a class="scout-link" onclick="closePipelineModal();goToScout(${s.user_id})">${esc(s.scout_name)}</a></td>
+              <td>${esc(s.current_rank)}</td>
+              ${hasPatrolCol ? `<td>${s.patrol ? `<span class="pill pill-blue" style="font-size:0.72rem">⚑ ${esc(s.patrol)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>` : ''}
+              <td>${s.next_rank_name ? esc(s.next_rank_name) : '<span style="color:var(--muted)">—</span>'}</td>
+              <td>${rpct !== null
+                ? `<div class="bar-wrap"><div class="mini-bar"><div class="mini-fill ${rpct >= 80 ? 'green' : ''}" style="width:${rpct}%"></div></div><span class="bar-pct">${s.done_req}/${s.total_req}</span></div>`
+                : '<span style="color:var(--muted)">—</span>'}</td>
+              <td>
+                <div class="bar-wrap">
+                  <div class="mini-bar"><div class="mini-fill ${epct >= 100 ? 'green' : 'gold'}" style="width:${epct}%"></div></div>
+                  <span class="bar-pct">${slots}/${EAGLE_SLOT_COUNT}</span>
+                </div>
+              </td>
+              <td style="text-align:right">${s.total_mbs}</td>
+              <td style="text-align:right">${s.in_prog > 0 ? `<span class="pill pill-gold">${s.in_prog}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+              <td style="text-align:right">${s.leadership > 0 ? `<span class="pill pill-green">${s.leadership}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+
+  document.getElementById('pipeline-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePipelineModal() {
+  document.getElementById('pipeline-modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function buildReqTree(rows) {
+  const byId = {};
+  const roots = [];
+  rows.forEach(r => { byId[r.id] = { ...r, children: [] }; });
+  rows.forEach(r => {
+    if (r.parent_requirement_id && byId[r.parent_requirement_id]) {
+      byId[r.parent_requirement_id].children.push(byId[r.id]);
+    } else if (!r.parent_requirement_id) {
+      roots.push(byId[r.id]);
+    }
+  });
+  return roots;
+}
+
+function isNodeDone(node) {
+  if (node.children && node.children.length > 0 && node.children_required) {
+    return node.children.filter(c => isNodeDone(c)).length >= node.children_required;
+  }
+  if (node.children && node.children.length > 0 && !node.children_required) {
+    // All children must be done
+    return node.children.every(c => isNodeDone(c));
+  }
+  return node.completed == 1;
+}
+
+function renderReqNode(node, depth) {
+  // Notes: no number, not required, no children — render as muted italic text
+  const hasKids = node.children && node.children.length > 0;
+  const isNote  = !node.requirement_number && node.required == 0 && !hasKids;
+
+  if (isNote) {
+    return `<div class="req-note-text">${esc(node.req_name)}</div>`;
+  }
+
+  const done     = isNodeDone(node);
+  const doneKids = hasKids ? node.children.filter(c => isNodeDone(c)).length : 0;
+  const numLabel = node.requirement_number
+    ? `<span class="req-num" style="min-width:24px">${esc(node.requirement_number)}</span>`
+    : '';
+
+  let childrenHTML = '';
+  if (hasKids) {
+    const chooseLabel = node.children_required
+      ? `<div class="req-choose-label">Complete ${node.children_required} of ${node.children.length} — ${doneKids} done</div>`
+      : (doneKids > 0 ? `<div class="req-choose-label">${doneKids} of ${node.children.length} done</div>` : '');
+    childrenHTML = chooseLabel
+      + `<div class="req-children">${node.children.map(c => renderReqNode(c, depth + 1)).join('')}</div>`;
+  }
+
+  const dateHTML = done && node.date_completed && !hasKids
+    ? `<div class="req-date">✓ ${fmtDate(node.date_completed)}</div>`
+    : '';
+
+  const nodeClass = `req-node ${done ? 'node-done' : 'node-todo'} ${depth > 0 ? 'is-child' : ''}`;
+  return `<div class="${nodeClass}">
+    <div class="req-node-row">
+      <div class="req-circle ${done ? 'done' : 'todo'}">${done ? '✓' : ''}</div>
+      <div class="req-node-text">
+        <div class="req-node-title">${numLabel}<span>${esc(node.req_name)}</span></div>
+        ${dateHTML}
+      </div>
+    </div>
+    ${childrenHTML}
+  </div>`;
+}
+
+// Close modals on Escape key
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeMBModal(); closeTroopMBModal(); closePipelineModal(); }
+});
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function fmtDate(s) {
+  if (!s) return '—';
+  const d = s.split('T')[0];
+  const parts = d.split('-');
+  if (parts.length !== 3) return s;
+  const [y, m, day] = parts;
+  const mi = parseInt(m, 10) - 1;
+  if (mi < 0 || mi > 11) return s;
+  return `${MONTHS[mi]} ${parseInt(day, 10)}, ${y}`;
+}
+
+function fmtDt(s) {
+  if (!s) return '—';
+  try {
+    const d = new Date(s);
+    if (isNaN(d)) return s;
+    return d.toLocaleDateString('en-US', {year:'numeric', month:'short', day:'numeric'});
+  } catch { return s; }
+}
+</script>
+</body>
+</html>
