@@ -30,6 +30,7 @@
       color: #111827;
       min-height: 100vh;
       font-size: 14px;
+      overflow-x: hidden;
     }
 
     /* ── Header ── */
@@ -46,9 +47,10 @@
       z-index: 200;
       box-shadow: 0 2px 12px rgba(0,0,0,0.35);
     }
-    .logo { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-    .logo-icon { font-size: 1.4rem; line-height: 1; }
-    nav.main-tabs { display: flex; gap: 4px; margin-left: auto; }
+    .logo { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; white-space: nowrap; flex: 1 1 auto; min-width: 0; overflow: hidden; }
+    .logo-icon { font-size: 1.4rem; line-height: 1; flex-shrink: 0; }
+    #header-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    nav.main-tabs { display: flex; gap: 4px; margin-left: auto; flex-shrink: 0; }
     .tab-btn {
       background: transparent;
       border: none;
@@ -610,9 +612,31 @@
     }
     @media (max-width: 680px) {
       .scout-layout { flex-direction: column; }
-      .scout-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+      .scout-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); padding: 12px 14px; }
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
       .eagle-grid { grid-template-columns: repeat(2, 1fr); }
+      .panel-sub { display: none !important; }
+    }
+    @media (max-width: 520px) {
+      /* Tighter header */
+      header { padding: 0 10px; gap: 8px; }
+      .tab-btn { padding: 6px 10px; font-size: 0.8rem; letter-spacing: 0; }
+      /* Tighter content areas */
+      .troop-main { padding: 10px; }
+      .scout-main { padding: 10px; }
+      .panel-body { padding: 10px 12px; }
+      .panel-header { padding: 10px 14px; }
+      .panels-grid { gap: 10px; }
+      .stats-grid { gap: 10px; margin-bottom: 14px; }
+      .stat-card { padding: 14px; }
+      .stat-value { font-size: 1.6rem; }
+      /* DB / Settings cards */
+      .db-card { padding: 24px 20px; }
+      .db-info-card { padding: 20px !important; }
+      /* Hide bar-chart columns in tables — visual summary, not critical data */
+      .bar-cell { display: none !important; }
+      /* Hide other low-priority elements flagged in templates */
+      .hide-sm { display: none !important; }
     }
   </style>
 </head>
@@ -1310,14 +1334,14 @@ function loadScout(userId) {
           ${allMBs.length > 0
             ? `<div class="tbl-wrap">
                 <table class="sortable">
-                  <thead><tr><th>Merit Badge</th><th>Status</th><th>Started</th><th>Completed</th><th></th></tr></thead>
+                  <thead><tr><th>Merit Badge</th><th>Status</th><th class="hide-sm">Started</th><th class="hide-sm">Completed</th><th></th></tr></thead>
                   <tbody id="mb-tbody">
                     ${allMBs.map(mb => `
                       <tr data-status="${mb.status}" class="clickable-row" onclick="showMBDetail(${esc(JSON.stringify(mb.merit_badge_name))})">
                         <td><span class="mb-name-link">${esc(mb.merit_badge_name)}</span></td>
                         <td><span class="pill ${mb.status === 'completed' ? 'pill-green' : 'pill-gold'}">${mb.status === 'completed' ? 'Earned' : 'In Progress'}</span></td>
-                        <td>${mb.date_started ? fmtDate(mb.date_started) : '—'}</td>
-                        <td>${mb.date_completed ? fmtDate(mb.date_completed) : '—'}</td>
+                        <td class="hide-sm">${mb.date_started ? fmtDate(mb.date_started) : '—'}</td>
+                        <td class="hide-sm">${mb.date_completed ? fmtDate(mb.date_completed) : '—'}</td>
                         <td style="color:var(--muted);font-size:0.8rem">›</td>
                       </tr>`).join('')}
                   </tbody>
@@ -1601,7 +1625,7 @@ function loadTroopView() {
         <div class="panel-body no-pad">
           <div class="tbl-wrap">
             <table class="sortable">
-              <thead><tr><th>Rank</th><th style="text-align:right">Scouts</th><th>Share of Troop</th></tr></thead>
+              <thead><tr><th>Rank</th><th style="text-align:right">Scouts</th><th class="hide-sm">Share of Troop</th></tr></thead>
               <tbody>
                 ${rankDist.map(r => {
                   const pct = n > 0 ? Math.round(r.scout_count * 100 / n) : 0;
@@ -1627,14 +1651,14 @@ function loadTroopView() {
         <div class="panel-header">
           <span class="panel-icon">⭐</span>
           <h2>Eagle MB Gaps</h2>
-          <span style="font-size:0.72rem;color:var(--muted);margin-left:auto">Scouts who haven't yet filled each slot</span>
+          <span class="panel-sub" style="font-size:0.72rem;color:var(--muted);margin-left:auto">Scouts who haven't yet filled each slot</span>
         </div>
         <div class="panel-body no-pad">
           <!-- Required badges section -->
           <div style="padding:10px 14px 4px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-weight:700;background:#fafafa;border-bottom:1px solid var(--border)">Required — 11 mandatory badges</div>
           <div class="tbl-wrap">
             <table class="sortable">
-              <thead><tr><th>Merit Badge</th><th style="text-align:right">Need</th><th>% of Troop</th><th>In Prog</th></tr></thead>
+              <thead><tr><th>Merit Badge</th><th style="text-align:right">Need</th><th class="hide-sm">% of Troop</th><th>In Prog</th></tr></thead>
               <tbody>
                 ${EAGLE_MANDATORY.map(name => {
                   const row = eagleGaps.find(r => r.name === name);
@@ -1687,13 +1711,13 @@ function loadTroopView() {
         <div class="panel-header">
           <span class="panel-icon">🎯</span>
           <h2>Closest to Rank Advancement</h2>
-          <span style="font-size:0.72rem;color:var(--muted);margin-left:auto">fewest reqs remaining</span>
+          <span class="panel-sub" style="font-size:0.72rem;color:var(--muted);margin-left:auto">fewest reqs remaining</span>
         </div>
         <div class="panel-body no-pad">
           ${closestToRank.length > 0
             ? `<div class="tbl-wrap">
                 <table class="sortable">
-                  <thead><tr><th>Scout</th><th>Working Toward</th><th>Progress</th><th>Left</th></tr></thead>
+                  <thead><tr><th>Scout</th><th>Working Toward</th><th class="hide-sm">Progress</th><th>Left</th></tr></thead>
                   <tbody>
                     ${closestToRank.map(r => `
                       <tr>
@@ -1724,13 +1748,13 @@ function loadTroopView() {
         <div class="panel-header">
           <span class="panel-icon">📅</span>
           <h2>Group Activity Planner</h2>
-          <span style="font-size:0.72rem;color:var(--muted);margin-left:auto">★ = Eagle-required · ≥ 40% of troop benefits</span>
+          <span class="panel-sub" style="font-size:0.72rem;color:var(--muted);margin-left:auto">★ = Eagle-required · ≥ 40% of troop benefits</span>
         </div>
         <div class="panel-body no-pad">
           ${activityPlannerAdj.length > 0
             ? `<div class="tbl-wrap">
                 <table class="sortable">
-                  <thead><tr><th>Merit Badge Activity</th><th style="text-align:right">Scouts Benefit</th><th>Troop %</th></tr></thead>
+                  <thead><tr><th>Merit Badge Activity</th><th style="text-align:right">Scouts Benefit</th><th class="hide-sm">Troop %</th></tr></thead>
                   <tbody>
                     ${activityPlannerAdj.map(a => `
                       <tr ${a.is_eagle_required ? 'class="bold-row"' : ''}>
@@ -1760,12 +1784,12 @@ function loadTroopView() {
         <div class="panel-header">
           <span class="panel-icon">📌</span>
           <h2>Most Needed Merit Badges</h2>
-          <span style="font-size:0.72rem;color:var(--muted);margin-left:auto">all badges, not just Eagle-required</span>
+          <span class="panel-sub" style="font-size:0.72rem;color:var(--muted);margin-left:auto">all badges, not just Eagle-required</span>
         </div>
         <div class="panel-body no-pad">
           <div class="tbl-wrap">
             <table class="sortable">
-              <thead><tr><th>Merit Badge</th><th>Eagle</th><th style="text-align:right">Scouts Need</th><th>%</th></tr></thead>
+              <thead><tr><th>Merit Badge</th><th>Eagle</th><th style="text-align:right">Scouts Need</th><th class="hide-sm">%</th></tr></thead>
               <tbody>
                 ${allMBGaps.map(mb => `
                   <tr>
@@ -1852,11 +1876,11 @@ function loadTroopView() {
                   <th>Scout</th>
                   <th>Current Rank</th>
                   ${hasPatrolCol ? '<th>Patrol</th>' : ''}
-                  <th style="text-align:right">Total MBs</th>
+                  <th class="hide-sm" style="text-align:right">Total MBs</th>
                   <th>Eagle Slots</th>
-                  <th>Slot Progress</th>
+                  <th class="hide-sm">Slot Progress</th>
                   <th style="text-align:right">In Progress</th>
-                  <th style="text-align:right">Leadership</th>
+                  <th class="hide-sm" style="text-align:right">Leadership</th>
                 </tr>
               </thead>
               <tbody>
@@ -1867,9 +1891,9 @@ function loadTroopView() {
                     <td><a class="scout-link" onclick="goToScout(${r.user_id})"><strong>${esc(r.scout_name)}</strong></a></td>
                     <td>${esc(r.current_rank)}</td>
                     ${hasPatrolCol ? `<td>${r.patrol ? `<span class="pill pill-blue" style="font-size:0.72rem">⚑ ${esc(r.patrol)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>` : ''}
-                    <td style="text-align:right">${r.total_mbs}</td>
+                    <td class="hide-sm" style="text-align:right">${r.total_mbs}</td>
                     <td>${slots}<span style="color:var(--muted)"> / ${EAGLE_SLOT_COUNT}</span></td>
-                    <td class="bar-cell">
+                    <td class="bar-cell hide-sm">
                       <div class="bar-wrap">
                         <div class="mini-bar">
                           <div class="mini-fill ${epct >= 100 ? 'green' : 'gold'}" style="width:${epct}%"></div>
@@ -1878,7 +1902,7 @@ function loadTroopView() {
                       </div>
                     </td>
                     <td style="text-align:right"><span class="pill pill-gold">${r.in_prog}</span></td>
-                    <td style="text-align:right">${r.approved_positions > 0 ? `<span class="pill pill-green">${r.approved_positions}</span>` : '<span class="pill pill-gray">0</span>'}</td>
+                    <td class="hide-sm" style="text-align:right">${r.approved_positions > 0 ? `<span class="pill pill-green">${r.approved_positions}</span>` : '<span class="pill pill-gray">0</span>'}</td>
                   </tr>`;
                 }).join('')}
               </tbody>

@@ -2,9 +2,13 @@
 
 A tool for Scout leaders to download Scout advancement data from the Scouting America API into a local SQLite database, then explore it through an interactive browser dashboard or CLI queries. Figure out which merit badges and rank requirements the most Scouts still need so you can plan troop meetings that benefit everyone.
 
-**NOTE:** While there is a "real" API that powers the likes of Scoutbook and other Scouting sites, it doesn't seem like it's meant to be used for actual application development. So ... this takes the approach of having you (a person) manually authenticate, and then pull down all of the relevant info for your roster. From that point you have a local SQLite database that you can query as much as you want.
+## Background Notes
 
-**ALSO:** This is not an officially sanctioned tool. Use at your own risk.
+- While there is a "real" API that powers the likes of Scoutbook and other Scouting sites, it doesn't seem like it's meant to be used for actual application development. So ... this takes the approach of having you (a person) manually authenticate, and then pull down all of the relevant info for your roster. From that point you have a local SQLite database that you can query as much as you want.
+
+- This is not an officially sanctioned tool. Use at your own risk.
+
+- Claude Code was used extensively to build this. The [scouting-api](https://github.com/mmarseglia/scouting-api) repo was used as input to figure out the API endpoints.
 
 ## Prerequisites
 
