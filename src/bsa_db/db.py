@@ -9,6 +9,11 @@ from pathlib import Path
 DEFAULT_DB_PATH = Path.cwd() / "bsa_troop.db"
 
 SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
+
 CREATE TABLE IF NOT EXISTS ranks (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -180,20 +185,32 @@ def _migrate_schema(conn):
     """Apply incremental schema changes that SCHEMA_SQL can't handle for existing DBs."""
     migrations = [
         "ALTER TABLE scouts ADD COLUMN patrol TEXT",
+        ("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)"),
     ]
     for sql in migrations:
         try:
             conn.execute(sql)
             conn.commit()
         except Exception:
-            pass  # Column already exists
+            pass  # Already applied
 
 
-def init_db(conn):
+def init_db(conn, troop_name=None):
     conn.executescript(SCHEMA_SQL)
     conn.commit()
     _migrate_schema(conn)
+    if troop_name is not None:
+        set_setting(conn, "troop_name", troop_name)
     seed_eagle_merit_badges(conn)
+
+
+def set_setting(conn, key, value):
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES (?, ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (key, value),
+    )
+    conn.commit()
 
 
 def seed_eagle_merit_badges(conn):
@@ -309,7 +326,7 @@ def upsert_scout(conn, user_id, first_name=None, last_name=None,
 
 
 def import_roster_csv(conn, csv_path):
-    """Import scouts from a Scoutbook Plus roster CSV export.
+    """Import Scouts from a Scoutbook Plus roster CSV export.
 
     Auto-detects column names. Common Scoutbook columns:
     - "BSA Member ID" or "Member ID"
@@ -522,7 +539,7 @@ def upsert_mb_requirements(conn, mb_api_id, mb_version_id, requirements):
 
 
 def store_youth_mb_requirements(conn, user_id, mb_api_id, mb_version_id, requirements):
-    """Store per-scout MB requirement completion. Returns count."""
+    """Store per-Scout MB requirement completion. Returns count."""
     count = 0
 
     def _walk(reqs):
@@ -566,7 +583,7 @@ def store_youth_mb_requirements(conn, user_id, mb_api_id, mb_version_id, require
 
 
 def store_youth_rank_requirements(conn, user_id, rank_id, requirements):
-    """Store per-scout rank requirement completion. Returns count."""
+    """Store per-Scout rank requirement completion. Returns count."""
     count = 0
 
     def _walk(reqs):

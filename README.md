@@ -1,6 +1,10 @@
-# BSA Troop Stats
+# Scouting Troop Stats
 
-A CLI tool for scoutmasters to download scout advancement data from the BSA API into a local SQLite database and run troop-wide queries. Figure out which merit badges and rank requirements the most scouts still need so you can plan troop meetings that benefit everyone.
+A tool for Scout leaders to download Scout advancement data from the Scouting America API into a local SQLite database, then explore it through an interactive browser dashboard or CLI queries. Figure out which merit badges and rank requirements the most Scouts still need so you can plan troop meetings that benefit everyone.
+
+**NOTE:** While there is a "real" API that powers the likes of Scoutbook and other Scouting sites, it doesn't seem like it's meant to be used for actual application development. So ... this takes the approach of having you (a person) manually authenticate, and then pull down all of the relevant info for your roster. From that point you have a local SQLite database that you can query as much as you want.
+
+**ALSO:** This is not an officially sanctioned tool. Use at your own risk.
 
 ## Prerequisites
 
@@ -31,10 +35,51 @@ uv run bsa get-token
 # 4. Sync each scout's advancement data
 uv run bsa sync-scouts
 
-# 5. Run queries
-uv run bsa query plan --min-pct 40
-uv run bsa query summary
+# 5. Open the dashboard
+python -m http.server 8000
+# then open http://localhost:8000/dashboard.html in your browser
 ```
+
+## Dashboard
+
+`dashboard.html` is an interactive browser UI that reads your `bsa_troop.db` directly — no extra server or build step required. It's the primary way to explore your troop's data visually.
+
+### Opening the dashboard
+
+Serve the project directory over HTTP so the dashboard can auto-load the database:
+
+```bash
+python -m http.server 8000
+```
+
+Then open **http://localhost:8000/dashboard.html** in your browser. The dashboard will automatically find and load `bsa_troop.db` from the same directory.
+
+If you can't run a local server, open `dashboard.html` directly in your browser and use the **Open Database** button to load `bsa_troop.db` manually from your filesystem.
+
+### Scout view
+
+Select any Scout by name to see their full record:
+
+- **Overview** — current rank, total merit badges earned (with Eagle count), in-progress MBs, and leadership days
+- **Rank progress** — which requirements for their next rank are complete, in progress, or still needed
+- **Merit badges** — completed and in-progress badges; click any in-progress badge to see a per-requirement breakdown
+- **Eagle pipeline** — a visual tracker showing exactly which of the 14 Eagle-required MBs they've earned, are working on, or still need (with "choose one" group slots)
+- **Leadership history** — all positions held with dates and approval status
+
+### Troop view
+
+Troop-wide analytics across all Scouts:
+
+- **Rank distribution** — bar chart of how many Scouts are at each rank
+- **Eagle MB gaps** — every Eagle-required badge ranked by how many Scouts still need it, with in-progress counts
+- **All-MB gaps** — top 20 merit badges by number of Scouts who haven't earned them
+- **Closest to next rank** — who needs the fewest requirements to advance, sorted by completion percentage
+- **Activity planner** — merit badges where ≥ 40% of the troop would benefit, flagged by Eagle status
+- **Roster** — full sortable table of all Scouts with rank, MB counts, and patrol
+
+### How it works
+
+The dashboard uses [sql.js](https://sql.js.org) (SQLite compiled to WebAssembly) to read the `.db` file entirely in the browser. Your data never leaves your machine.
 
 ## Getting Your API Token
 
@@ -55,7 +100,7 @@ If `get-token` doesn't work, you can grab a token manually from your browser whi
 1. Open **Chrome** (or Firefox/Edge) and log in to [Scoutbook](https://scoutbook.scouting.org) or [Internet Advancement](https://advancements.scouting.org).
 2. Open **Developer Tools** (press `F12`, or right-click the page and choose "Inspect").
 3. Go to the **Network** tab.
-4. Navigate to any page that loads scout data (e.g., click on a scout's advancement page).
+4. Navigate to any page that loads Scout data (e.g., click on a Scout's advancement page).
 5. In the Network tab, look for requests to `api.scouting.org`. Click on one.
 6. In the **Headers** section, find the `Authorization` header. It will look like:
    ```
@@ -107,7 +152,7 @@ The CSV parser auto-detects common Scoutbook column names:
 
 | Accepted columns     | What it maps to     |
 |----------------------|---------------------|
-| `User ID`, `UserID`  | Primary scout identifier (used for API calls) |
+| `User ID`, `UserID`  | Primary Scout identifier (used for API calls) |
 | `BSA Member ID`, `Member ID` | BSA membership number (fallback identifier) |
 | `First Name`, `First` | Scout first name    |
 | `Last Name`, `Last`   | Scout last name     |
@@ -123,9 +168,9 @@ Create a CSV from the roster on this page that contains the fields "Name,UserId,
 
 This should generate a CSV that you can use directly with this.
 
-### Adding scouts manually
+### Adding Scouts manually
 
-If you don't have a CSV, you can add scouts one at a time:
+If you don't have a CSV, you can add Scouts one at a time:
 
 ```bash
 uv run bsa add-scout 123456789 "John Smith"
@@ -133,13 +178,13 @@ uv run bsa add-scout 123456789 "John Smith"
 
 ## Syncing Scout Data
 
-Once scouts are in the database, fetch their advancement records from the API:
+Once Scouts are in the database, fetch their advancement records from the API:
 
 ```bash
 uv run bsa sync-scouts
 ```
 
-This pulls, for each scout:
+This pulls, for each Scout:
 - **Rank advancement** -- ranks earned and in-progress, including per-requirement completion for in-progress ranks
 - **Merit badges** -- completed and in-progress, including per-requirement completion for in-progress MBs
 - **Leadership positions** -- SPL, PL, etc. with dates and approval status
@@ -158,11 +203,11 @@ This skips the individual requirement completion endpoints for in-progress ranks
 
 ## Queries
 
-All queries are run via `uv run bsa query <name>`. The database must have rank data (`sync-ranks`) and scout data (`sync-scouts`) populated first.
+All queries are run via `uv run bsa query <name>`. The database must have rank data (`sync-ranks`) and Scout data (`sync-scouts`) populated first.
 
 ### `query plan` -- Optimal Group Activities
 
-The main event. Shows which merit badges and activities would benefit the most scouts, so you can plan troop meetings around what the majority still needs.
+The main event. Shows which merit badges and activities would benefit the most Scouts, so you can plan troop meetings around what the majority still needs.
 
 ```bash
 uv run bsa query plan                 # Activities benefiting >= 50% of troop
@@ -192,7 +237,7 @@ uv run bsa query needs-mb --limit 10         # Top 10
 
 ### `query mb-reqs` -- Merit Badge Requirement Detail
 
-For in-progress merit badges, shows which individual requirements scouts still need to complete.
+For in-progress merit badges, shows which individual requirements Scouts still need to complete.
 
 ```bash
 uv run bsa query mb-reqs                              # All in-progress MBs
@@ -210,7 +255,7 @@ uv run bsa query summary
 Example output:
 
 ```
-Troop Summary (20 scouts):
+Troop Summary (20 Scouts):
 
   Scout                     Rank           MBs   Eagle  In Prog
   ------------------------- ------------- ---- ----- -------
@@ -292,7 +337,7 @@ Add the server to your Claude Code MCP settings (`.claude/mcp_servers.json` or v
 
 ## Debugging
 
-The `discover` command probes multiple API endpoints for a single scout and prints the raw JSON responses. Useful for understanding what data the API returns (the youth advancement endpoints aren't publicly documented).
+The `discover` command probes multiple API endpoints for a single Scout and prints the raw JSON responses. Useful for understanding what data the API returns (the youth advancement endpoints aren't publicly documented).
 
 ```bash
 uv run bsa discover 123456789
@@ -304,8 +349,8 @@ This probes:
 - `/advancements/v2/youth/{uid}/awards`
 - `/advancements/v2/{uid}/userActivitySummary`
 - `/advancements/youth/{uid}/leadershipPositionHistory`
-- Rank requirement endpoints (public definitions + per-scout completion) for any in-progress rank found in the database
-- MB requirement endpoints (public definitions + per-scout completion) for any in-progress MB found in the database
+- Rank requirement endpoints (public definitions + per-Scout completion) for any in-progress rank found in the database
+- MB requirement endpoints (public definitions + per-Scout completion) for any in-progress MB found in the database
 
 ## Database
 
@@ -328,6 +373,7 @@ uv run bsa --db /path/to/other.db sync-ranks
 bsa-db/
   pyproject.toml              # Project config, defines `bsa` and `bsa-mcp` entry points
   uv.lock                     # Lockfile (auto-generated)
+  dashboard.html              # Browser dashboard (open via http.server or file picker)
   src/bsa_db/
     cli.py                    # CLI entry point (argparse subcommands)
     api.py                    # HTTP client for api.scouting.org

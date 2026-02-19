@@ -1,6 +1,6 @@
 """BSA Troop Analytics CLI Tool.
 
-Download scout advancement data from api.scouting.org into a local
+Download Scout advancement data from api.scouting.org into a local
 SQLite database and run troop-wide analytical queries.
 
 Usage examples:
@@ -23,6 +23,7 @@ from bsa_db.db import (
     get_connection,
     import_roster_csv,
     init_db,
+    set_setting,
     store_leadership,
     store_youth_mb_requirements,
     store_youth_merit_badges,
@@ -71,16 +72,26 @@ def require_token():
 # --- Commands ---
 
 
+def _ensure_troop_name(conn):
+    """Prompt for the troop name if it hasn't been set yet."""
+    row = conn.execute("SELECT value FROM settings WHERE key = 'troop_name'").fetchone()
+    if not (row and row["value"]):
+        name = input("Troop name not set. Enter troop name (e.g. 'Troop 42'): ").strip()
+        if name:
+            set_setting(conn, "troop_name", name)
+
+
 def cmd_init(args):
     conn = get_connection(args.db)
-    init_db(conn)
+    init_db(conn, troop_name=args.troop_name)
     conn.close()
-    print(f"Database initialized at {args.db or 'bsa_troop.db'}")
+    print(f"Database initialized at {args.db or 'bsa_troop.db'} (troop: {args.troop_name})")
 
 
 def cmd_sync_ranks(args):
     conn = get_connection(args.db)
     init_db(conn)
+    _ensure_troop_name(conn)
     api = ScoutingAPI()
 
     print("Fetching ranks...")
@@ -113,24 +124,26 @@ def cmd_sync_ranks(args):
 def cmd_import_roster(args):
     conn = get_connection(args.db)
     init_db(conn)
+    _ensure_troop_name(conn)
     try:
         imported, skipped = import_roster_csv(conn, args.csv_file)
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
     conn.close()
-    print(f"Imported {imported} scouts ({skipped} rows skipped)")
+    print(f"Imported {imported} Scouts ({skipped} rows skipped)")
 
 
 def cmd_add_scout(args):
     conn = get_connection(args.db)
     init_db(conn)
+    _ensure_troop_name(conn)
     name_parts = (args.name or "").split(" ", 1)
     first = name_parts[0] if name_parts[0] else None
     last = name_parts[1] if len(name_parts) > 1 else None
     upsert_scout(conn, args.user_id, first, last)
     conn.close()
-    print(f"Added scout {args.user_id}" + (f" ({args.name})" if args.name else ""))
+    print(f"Added Scout {args.user_id}" + (f" ({args.name})" if args.name else ""))
 
 
 def _abort_if_unauthorized(e, conn):
@@ -150,23 +163,24 @@ def cmd_sync_scouts(args):
     token = require_token()
     conn = get_connection(args.db)
     init_db(conn)
+    _ensure_troop_name(conn)
     api = ScoutingAPI(token=token)
 
     scouts = conn.execute(
         "SELECT user_id, first_name, last_name FROM scouts"
     ).fetchall()
     if not scouts:
-        print("No scouts registered. Use 'import-roster' or 'add-scout' first.")
+        print("No Scouts registered. Use 'import-roster' or 'add-scout' first.")
         conn.close()
         return
 
     skip_reqs = getattr(args, "skip_reqs", False)
-    # Cache MB requirement definitions to avoid re-fetching for multiple scouts
+    # Cache MB requirement definitions to avoid re-fetching for multiple Scouts
     mb_defn_cache = {}  # mb_id -> version_id (already stored)
     # Cache rank requirement definitions to avoid re-fetching
     rank_defn_cache = set()  # rank_ids already stored
 
-    print(f"Syncing {len(scouts)} scouts...")
+    print(f"Syncing {len(scouts)} Scouts...")
     for scout in scouts:
         uid = scout["user_id"]
         name = f"{scout['first_name'] or ''} {scout['last_name'] or ''}".strip()
@@ -247,7 +261,7 @@ def cmd_sync_scouts(args):
                         upsert_mb_requirements(conn, mb_id, version_id, defn)
                         mb_defn_cache[mb_id] = version_id
 
-                    # Per-scout completion
+                    # Per-Scout completion
                     youth_reqs = api.get_youth_mb_requirements(uid, mb_id)
                     version_id = mb_defn_cache.get(mb_id) or mb.get("versionId") or ""
                     req_count += store_youth_mb_requirements(
@@ -268,6 +282,7 @@ def cmd_discover(args):
     token = require_token()
     conn = get_connection(args.db)
     init_db(conn)
+    _ensure_troop_name(conn)
     api = ScoutingAPI(token=token)
     uid = args.user_id
 
@@ -315,7 +330,7 @@ def cmd_discover(args):
         rank_probes = [
             (f"GET  /advancements/ranks/{rank_id}/requirements (public, definitions)",
              f"/advancements/ranks/{rank_id}/requirements"),
-            (f"GET  /advancements/v2/youth/{uid}/ranks/{rank_id}/requirements (auth, per-scout)",
+            (f"GET  /advancements/v2/youth/{uid}/ranks/{rank_id}/requirements (auth, per-Scout)",
              f"/advancements/v2/youth/{uid}/ranks/{rank_id}/requirements"),
         ]
         for label, path in rank_probes:
@@ -354,7 +369,7 @@ def cmd_discover(args):
         mb_probes = [
             (f"GET  /advancements/meritBadges/{mb_id}/requirements (public, by mb id)",
              f"/advancements/meritBadges/{mb_id}/requirements"),
-            (f"GET  /advancements/v2/youth/{uid}/meritBadges/{mb_id}/requirements (auth, per-scout)",
+            (f"GET  /advancements/v2/youth/{uid}/meritBadges/{mb_id}/requirements (auth, per-Scout)",
              f"/advancements/v2/youth/{uid}/meritBadges/{mb_id}/requirements"),
         ]
         for label, path in mb_probes:
@@ -449,10 +464,10 @@ def cmd_query(args):
     elif args.query_name == "summary":
         rows = per_scout_summary(conn)
         if not rows:
-            print("No scouts in database.")
+            print("No Scouts in database.")
             conn.close()
             return
-        print(f"\nTroop Summary ({len(rows)} scouts):\n")
+        print(f"\nTroop Summary ({len(rows)} Scouts):\n")
         print(
             f"  {'Scout':<25} {'Rank':<14} {'MBs':<5} "
             f"{'Eagle':<6} {'In Prog':<8}"
@@ -560,27 +575,28 @@ def main():
     parser.add_argument("--db", help="Path to SQLite database", default=None)
     sub = parser.add_subparsers(dest="command")
 
-    sub.add_parser("init", help="Initialize the database")
+    p_init = sub.add_parser("init", help="Initialize the database")
+    p_init.add_argument("troop_name", help="Name of the troop (e.g. 'Troop 42')")
     sub.add_parser("get-token", help="Authenticate with my.scouting.org and save token to config.json")
     sub.add_parser("sync-ranks", help="Download ranks and requirements")
 
     p_roster = sub.add_parser(
-        "import-roster", help="Import scouts from Scoutbook CSV roster export"
+        "import-roster", help="Import Scouts from Scoutbook CSV roster export"
     )
     p_roster.add_argument("csv_file", help="Path to roster CSV file")
 
-    p_add = sub.add_parser("add-scout", help="Manually add a single scout")
+    p_add = sub.add_parser("add-scout", help="Manually add a single Scout")
     p_add.add_argument("user_id", help="Scout's API userId")
     p_add.add_argument("name", nargs="?", help="Scout's name ('First Last')")
 
-    p_sync = sub.add_parser("sync-scouts", help="Fetch advancement data for all scouts")
+    p_sync = sub.add_parser("sync-scouts", help="Fetch advancement data for all Scouts")
     p_sync.add_argument(
         "--skip-reqs", action="store_true",
         help="Skip fetching per-requirement MB completion (faster sync)",
     )
 
     p_disc = sub.add_parser(
-        "discover", help="Print raw API response for a scout (debugging)"
+        "discover", help="Print raw API response for a Scout (debugging)"
     )
     p_disc.add_argument("user_id", help="Scout's API userId")
 
