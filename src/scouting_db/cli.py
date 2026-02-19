@@ -18,6 +18,8 @@ import json
 import os
 import sys
 
+import click
+
 from scouting_db.api import ScoutingAPI, ScoutingAPIError, authenticate
 from scouting_db.db import (
     get_connection,
@@ -149,14 +151,27 @@ def cmd_add_scout(args):
 def _abort_if_unauthorized(e, conn):
     """Exit immediately with a helpful message on 401 Unauthorized."""
     if e.status_code == 401:
-        print()  # close any partial output line
-        print(
-            "\nError: 401 Unauthorized — your token has likely expired.\n"
-            "Run 'scouting get-token' to refresh it.",
-            file=sys.stderr,
+        click.echo("")  # close any partial output line
+        click.echo(
+            click.style(
+                "\nError: 401 Unauthorized — your token has likely expired.\n"
+                "Run 'scouting get-token' to refresh it.",
+                fg="red", bold=True,
+            ),
+            err=True,
         )
         conn.close()
         sys.exit(1)
+
+
+def _ok(text):
+    return click.style(text, fg="green")
+
+def _err(text):
+    return click.style(text, fg="red")
+
+def _dim(text):
+    return click.style(text, fg="bright_black")
 
 
 def cmd_sync_scouts(args):
@@ -170,19 +185,20 @@ def cmd_sync_scouts(args):
         "SELECT user_id, first_name, last_name FROM scouts"
     ).fetchall()
     if not scouts:
-        print("No Scouts registered. Use 'import-roster' or 'add-scout' first.")
+        click.echo(click.style("No Scouts registered.", fg="yellow")
+                   + " Use 'import-roster' or 'add-scout' first.")
         conn.close()
         return
 
     # Validate auth before starting the full sync loop
-    print("Validating auth...", end=" ", flush=True)
+    click.echo("Validating auth... ", nl=False)
     try:
         api.validate_token(scouts[0]["user_id"])
-        print("OK")
+        click.echo(click.style("✓", fg="green", bold=True))
     except ScoutingAPIError as e:
-        print()
+        click.echo("")
         _abort_if_unauthorized(e, conn)
-        print(f"Warning: auth check returned {e.status_code}, proceeding anyway.")
+        click.echo(click.style(f"⚠  auth check returned {e.status_code}, proceeding anyway.", fg="yellow"))
 
     skip_reqs = getattr(args, "skip_reqs", False)
     # Cache MB requirement definitions to avoid re-fetching for multiple Scouts
@@ -190,21 +206,26 @@ def cmd_sync_scouts(args):
     # Cache rank requirement definitions to avoid re-fetching
     rank_defn_cache = set()  # rank_ids already stored
 
-    print(f"Syncing {len(scouts)} Scouts...")
-    for scout in scouts:
+    total = len(scouts)
+    width = len(str(total))
+    click.echo(f"\nSyncing {click.style(str(total), bold=True)} Scout{'s' if total != 1 else ''}\n")
+
+    for i, scout in enumerate(scouts, 1):
         uid = scout["user_id"]
         name = f"{scout['first_name'] or ''} {scout['last_name'] or ''}".strip()
         label = name or uid
-        print(f"  {label}...", end=" ", flush=True)
+
+        counter = _dim(f"[{i:>{width}}/{total}]")
+        click.echo(f"  {counter} {click.style(label, bold=True)}", nl=False)
 
         ranks_data = None
         try:
             ranks_data = api.get_youth_ranks(uid)
             count = store_youth_ranks(conn, uid, ranks_data)
-            print(f"ranks({count})", end=" ", flush=True)
+            click.echo(f"  {_ok(f'ranks({count})')}", nl=False)
         except ScoutingAPIError as e:
             _abort_if_unauthorized(e, conn)
-            print(f"[ranks error: {e.status_code}]", end=" ", flush=True)
+            click.echo(f"  {_err(f'[ranks:{e.status_code}]')}", nl=False)
 
         # Fetch per-requirement completion for in-progress ranks
         if not skip_reqs and ranks_data:
@@ -233,24 +254,24 @@ def cmd_sync_scouts(args):
                 except ScoutingAPIError as e:
                     _abort_if_unauthorized(e, conn)
             if rank_req_count:
-                print(f"rank_reqs({rank_req_count})", end=" ", flush=True)
+                click.echo(f"  {_ok(f'rank_reqs({rank_req_count})')}", nl=False)
 
         mb_data = None
         try:
             mb_data = api.get_youth_merit_badges(uid)
-            earned, total = store_youth_merit_badges(conn, uid, mb_data)
-            print(f"mbs({earned}/{total})", end=" ", flush=True)
+            earned, total_mbs = store_youth_merit_badges(conn, uid, mb_data)
+            click.echo(f"  {_ok(f'mbs({earned}/{total_mbs})')}", nl=False)
         except ScoutingAPIError as e:
             _abort_if_unauthorized(e, conn)
-            print(f"[mbs error: {e.status_code}]", end=" ", flush=True)
+            click.echo(f"  {_err(f'[mbs:{e.status_code}]')}", nl=False)
 
         try:
             lead_data = api.get_leadership_history(uid)
             count = store_leadership(conn, uid, lead_data)
-            print(f"leadership({count})", end=" ", flush=True)
+            click.echo(f"  {_ok(f'leadership({count})')}", nl=False)
         except ScoutingAPIError as e:
             _abort_if_unauthorized(e, conn)
-            print(f"[lead error: {e.status_code}]", end=" ", flush=True)
+            click.echo(f"  {_err(f'[lead:{e.status_code}]')}", nl=False)
 
         # Fetch per-requirement completion for in-progress MBs
         if not skip_reqs and mb_data:
@@ -280,12 +301,12 @@ def cmd_sync_scouts(args):
                 except ScoutingAPIError as e:
                     _abort_if_unauthorized(e, conn)
             if req_count:
-                print(f"reqs({req_count})", end=" ", flush=True)
+                click.echo(f"  {_ok(f'reqs({req_count})')}", nl=False)
 
-        print()
+        click.echo("")  # end of scout line
 
     conn.close()
-    print("Done.")
+    click.echo(f"\n{click.style('✓', fg='green', bold=True)} Done — synced {total} Scout{'s' if total != 1 else ''}.")
 
 
 def cmd_discover(args):

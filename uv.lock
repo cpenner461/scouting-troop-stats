@@ -734,11 +734,15 @@ name = "scouting"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "click" },
     { name = "mcp", extra = ["cli"] },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "mcp", extras = ["cli"] }]
+requires-dist = [
+    { name = "click", specifier = ">=8.3.1" },
+    { name = "mcp", extras = ["cli"] },
+]
 
 [[package]]
 name = "shellingham"

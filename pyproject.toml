@@ -3,7 +3,10 @@ name = "scouting"
 version = "0.1.0"
 description = "Scouting Troop Analytics CLI - download Scout advancement data and run troop-wide queries"
 requires-python = ">=3.10"
-dependencies = ["mcp[cli]"]
+dependencies = [
+    "click>=8.3.1",
+    "mcp[cli]",
+]
 
 [project.scripts]
 scouting = "scouting_db.cli:main"
