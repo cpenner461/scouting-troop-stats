@@ -174,6 +174,16 @@ def cmd_sync_scouts(args):
         conn.close()
         return
 
+    # Validate auth before starting the full sync loop
+    print("Validating auth...", end=" ", flush=True)
+    try:
+        api.validate_token(scouts[0]["user_id"])
+        print("OK")
+    except ScoutingAPIError as e:
+        print()
+        _abort_if_unauthorized(e, conn)
+        print(f"Warning: auth check returned {e.status_code}, proceeding anyway.")
+
     skip_reqs = getattr(args, "skip_reqs", False)
     # Cache MB requirement definitions to avoid re-fetching for multiple Scouts
     mb_defn_cache = {}  # mb_id -> version_id (already stored)

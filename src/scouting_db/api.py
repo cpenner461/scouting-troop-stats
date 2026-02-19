@@ -119,3 +119,11 @@ class ScoutingAPI:
         return self._request(
             f"/advancements/youth/{user_id}/leadershipPositionHistory"
         )
+
+    def validate_token(self, user_id):
+        """Verify the token is valid by making a lightweight auth-required request.
+
+        Uses a Scout's user_id to hit a known auth-required endpoint.
+        Raises ScoutingAPIError (status_code == 401) if the token is expired or invalid.
+        """
+        self._request(f"/advancements/v2/youth/{user_id}/ranks")
