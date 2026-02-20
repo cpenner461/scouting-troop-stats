@@ -1226,6 +1226,10 @@ function loadScout(userId) {
       ${ov.last_rank_date ? `<div>Rank earned: ${fmtDate(ov.last_rank_date)}</div>` : ''}
       ${ov.leadership_days ? `<div>Leadership: ${ov.leadership_days} days</div>` : ''}
       ${ov.last_synced_at ? `<div>Synced: ${fmtDt(ov.last_synced_at)}</div>` : ''}
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:0.72rem;color:var(--muted)">
+        <div>User ID: ${esc(String(ov.user_id))}</div>
+        ${ov.scouting_member_id ? `<div>Member ID: ${esc(String(ov.scouting_member_id))}</div>` : ''}
+      </div>
     </div>`;
 
   // ── Render ──
