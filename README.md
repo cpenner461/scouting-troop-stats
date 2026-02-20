@@ -48,6 +48,19 @@ python -m http.server 8000
 
 `dashboard.html` is an interactive browser UI that reads your `scouting_troop.db` directly — no extra server or build step required. It's the primary way to explore your troop's data visually.
 
+### Trying it out without real data
+
+The repo includes `sample_troop.db` — a fully populated database for a fictional "Sample Troop 999" with 50 made-up Scouts across 5 patrols (Alpha, Bravo, Charlie, Delta, Echo) and a realistic spread of ranks from New Scout through Eagle. It lets you explore every panel in the dashboard without authenticating or syncing any real data.
+
+To use it, start the local server and open the dashboard as usual:
+
+```bash
+python -m http.server 8000
+# open http://localhost:8000/dashboard.html
+```
+
+Then click **Open Database** and select `sample_troop.db` instead of `scouting_troop.db`. All dashboard features — Scout records, Eagle MB gaps, activity planner, rank advancement, patrol groupings, and leadership history — are populated and browsable.
+
 ### Opening the dashboard
 
 Serve the project directory over HTTP so the dashboard can auto-load the database:
@@ -378,6 +391,7 @@ bsa-db/
   pyproject.toml              # Project config, defines `scouting` and `scouting-mcp` entry points
   uv.lock                     # Lockfile (auto-generated)
   dashboard.html              # Browser dashboard (open via http.server or file picker)
+  sample_troop.db             # Sample database with 50 fictional scouts for exploring the dashboard
   src/scouting_db/
     cli.py                    # CLI entry point (argparse subcommands)
     api.py                    # HTTP client for api.scouting.org
