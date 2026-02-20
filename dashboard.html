@@ -247,8 +247,9 @@
     .prog-fill.purple { background: #7c3aed; }
 
     /* ── Panels ── */
-    .panels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-    .panel-full { grid-column: 1 / -1; }
+    .panels-grid { display: flex; flex-direction: column; gap: 18px; }
+    .panels-pair { display: flex; gap: 18px; align-items: flex-start; }
+    .panels-col  { flex: 1; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 
     .panel {
       background: var(--card);
@@ -264,7 +265,7 @@
       gap: 8px;
       background: #fafafa;
     }
-    .panel-header h2 { font-size: 0.9rem; font-weight: 700; }
+    .panel-header h2 { font-size: 0.9rem; font-weight: 700; margin: 0; }
     .panel-icon { font-size: 1rem; line-height: 1; }
     .panel-body { padding: 16px 18px; }
     .panel-body.no-pad { padding: 0; }
@@ -608,7 +609,7 @@
 
     /* ── Responsive ── */
     @media (max-width: 900px) {
-      .panels-grid { grid-template-columns: 1fr; }
+      .panels-pair { flex-direction: column; }
     }
     @media (max-width: 680px) {
       .scout-layout { flex-direction: column; }
@@ -626,6 +627,8 @@
       .scout-main { padding: 10px; }
       .panel-body { padding: 10px 12px; }
       .panel-header { padding: 10px 14px; }
+      .panels-pair { gap: 10px; }
+      .panels-col  { gap: 10px; }
       .panels-grid { gap: 10px; }
       .stats-grid { gap: 10px; margin-bottom: 14px; }
       .stat-card { padding: 14px; }
@@ -647,9 +650,11 @@
   <div class="logo">
     <span class="logo-icon">⚜️</span>
     <span id="header-title">Scouting Stats</span>
+    <span id="header-sync-label" style="font-size:0.68rem;font-weight:400;opacity:0.65;white-space:nowrap;display:none"></span>
   </div>
   <nav class="main-tabs">
     <button class="tab-btn active" data-view="troop" onclick="switchView('troop',this)">Troop</button>
+    <button class="tab-btn" data-view="roster" onclick="switchView('roster',this)">Roster</button>
     <button class="tab-btn" data-view="scout" onclick="switchView('scout',this)">Scout</button>
     <button class="tab-btn" data-view="db" id="db-tab" onclick="switchView('db',this)">Settings</button>
   </nav>
@@ -708,6 +713,19 @@
     </div>
   </div>
 </div>
+
+<!-- ══════════ ROSTER VIEW ══════════ -->
+<div class="view" id="view-roster">
+  <div class="troop-main">
+    <div id="roster-content">
+      <div class="empty-state">
+        <div class="ei">⚜️</div>
+        <p>Load a database file to see the troop roster.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- ══════════ MB DETAIL MODAL ══════════ -->
 <div id="mb-modal" class="mb-modal-overlay" onclick="if(event.target===this)closeMBModal()">
@@ -823,6 +841,28 @@ function q1(sql, params = []) {
   return r.length ? r[0] : null;
 }
 
+// ─── Panel layout (masonry-style two-column via flexbox) ─────────────────────
+function relayoutPanels(root) {
+  root.querySelectorAll('.panels-grid').forEach(grid => {
+    const items = Array.from(grid.children);
+    if (items.every(el => el.classList.contains('panel-full'))) return;
+
+    const left  = document.createElement('div');
+    left.className = 'panels-col';
+    const right = document.createElement('div');
+    right.className = 'panels-col';
+    items.forEach((item, i) => (i % 2 === 0 ? left : right).appendChild(item));
+
+    const pair = document.createElement('div');
+    pair.className = 'panels-pair';
+    pair.appendChild(left);
+    pair.appendChild(right);
+
+    grid.innerHTML = '';
+    grid.appendChild(pair);
+  });
+}
+
 // ─── View switching ──────────────────────────────────────────────────────────
 function switchView(name, btn) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -830,6 +870,8 @@ function switchView(name, btn) {
   document.getElementById('view-' + name).classList.add('active');
   btn.classList.add('active');
   if (name === 'troop' && db) loadTroopView();
+  if (name === 'roster' && db) loadRosterView();
+
 }
 
 // ─── Sortable tables ─────────────────────────────────────────────────────────
@@ -900,6 +942,13 @@ async function loadDbBuffer(buf, filename) {
   document.getElementById('header-title').textContent = titleText;
   document.title = titleText;
 
+  const lastSyncRow = q1('SELECT MAX(last_synced_at) AS d FROM scouts');
+  const lastSync = lastSyncRow ? lastSyncRow.d : null;
+  const lastSyncText = lastSync ? 'Data loaded ' + fmtDt(lastSync) : null;
+  const syncLabelEl = document.getElementById('header-sync-label');
+  if (lastSyncText) { syncLabelEl.textContent = lastSyncText; syncLabelEl.style.display = ''; }
+  else { syncLabelEl.style.display = 'none'; }
+
   hasPatrolCol = q("PRAGMA table_info(scouts)").some(c => c.name === 'patrol');
 
   // Populate the Settings info card
@@ -922,6 +971,7 @@ async function loadDbBuffer(buf, filename) {
   }).join('');
   document.getElementById('db-info-content').innerHTML =
     (troopName ? `<div class="db-info-troop"><div class="label">Troop</div><div class="value">${esc(troopName)}</div></div>` : '') +
+    (lastSyncText ? `<div class="db-info-troop"><div class="label">Last Sync</div><div class="value">${esc(lastSyncText.replace('Data loaded ', ''))}</div></div>` : '') +
     `<table class="db-stats-table">
       <thead><tr><th>Table</th><th>Rows</th></tr></thead>
       <tbody>${tableRows}</tbody>
@@ -1406,6 +1456,7 @@ function loadScout(userId) {
 
     </div><!-- /panels-grid -->
   `;
+  relayoutPanels(document.getElementById('scout-content'));
 }
 
 function filterMBTab(status, btn) {
@@ -1451,7 +1502,9 @@ function loadTroopView() {
 
   const allMBGaps = q(`
     SELECT mb.name, mb.is_eagle_required, COUNT(s.user_id) AS scouts_needing,
-      ROUND(COUNT(s.user_id)*100.0/MAX(?,1),1) AS pct_needing
+      ROUND(COUNT(s.user_id)*100.0/MAX(?,1),1) AS pct_needing,
+      (SELECT COUNT(*) FROM scout_merit_badges WHERE merit_badge_name=mb.name AND status='in_progress') AS scouts_in_progress,
+      (SELECT COUNT(*) FROM scout_merit_badges WHERE merit_badge_name=mb.name AND status='completed') AS scouts_completed
     FROM merit_badges mb
     CROSS JOIN scouts s
     LEFT JOIN scout_merit_badges smb
@@ -1527,16 +1580,6 @@ function loadTroopView() {
 
   const slotByUser = {};
   eagleSlotData.forEach(r => { slotByUser[r.user_id] = r.mandatory_done + r.group_a + r.group_b + r.group_c; });
-
-  // Patrol groupings (built from roster which already has patrol)
-  const patrolGroups = {};
-  roster.forEach(r => {
-    const p = r.patrol || 'Unassigned';
-    if (!patrolGroups[p]) patrolGroups[p] = [];
-    patrolGroups[p].push(r);
-  });
-  const patrolNames = Object.keys(patrolGroups).sort((a, b) =>
-    a === 'Unassigned' ? 1 : b === 'Unassigned' ? -1 : a.localeCompare(b));
 
   // Troop-level choice group satisfaction stats
   const choiceGroupTroopStats = EAGLE_CHOICE_GROUPS.map((group, i) => {
@@ -1651,21 +1694,20 @@ function loadTroopView() {
         <div class="panel-header">
           <span class="panel-icon">⭐</span>
           <h2>Eagle MB Gaps</h2>
-          <span class="panel-sub" style="font-size:0.72rem;color:var(--muted);margin-left:auto">Scouts who haven't yet filled each slot</span>
         </div>
         <div class="panel-body no-pad">
           <!-- Required badges section -->
           <div style="padding:10px 14px 4px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-weight:700;background:#fafafa;border-bottom:1px solid var(--border)">Required — 11 mandatory badges</div>
           <div class="tbl-wrap">
-            <table class="sortable">
+            <table>
               <thead><tr><th>Merit Badge</th><th style="text-align:right">Need</th><th class="hide-sm">% of Troop</th><th>In Prog</th></tr></thead>
               <tbody>
-                ${EAGLE_MANDATORY.map(name => {
+                ${[...EAGLE_MANDATORY].sort((a, b) => a.localeCompare(b)).map(name => {
                   const row = eagleGaps.find(r => r.name === name);
                   const need = row ? row.scouts_needing : 0;
                   const pct  = row ? row.pct_needing : 0;
                   const prog = row ? (row.in_progress_count || 0) : 0;
-                  return `<tr ${need > 0 && pct >= 50 ? 'class="bold-row"' : need === 0 ? 'style="opacity:0.45"' : ''}>
+                  return `<tr ${need === 0 ? 'style="opacity:0.45"' : ''}>
                     <td><a class="mb-name-link" onclick="showTroopMBDetail(${esc(JSON.stringify(name))})">${esc(name)}</a></td>
                     <td style="text-align:right"><strong>${need}</strong></td>
                     <td class="bar-cell">
@@ -1682,27 +1724,30 @@ function loadTroopView() {
           </div>
           <!-- Choice groups section -->
           <div style="padding:10px 14px 4px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-weight:700;background:#fafafa;border-top:2px solid var(--border);border-bottom:1px solid var(--border)">Choose One from Each Group — 3 slots</div>
-          ${choiceGroupTroopStats.map(cg => `
-            <div class="cg-troop-row">
-              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-                <div>
-                  <span style="font-size:0.82rem;font-weight:700">${esc(cg.label)}</span>
-                  <div style="font-size:0.72rem;color:var(--muted);margin-top:2px">${cg.notSatisfied} Scout${cg.notSatisfied !== 1 ? 's' : ''} haven't satisfied this group yet</div>
-                </div>
-                <div class="bar-wrap" style="min-width:120px">
-                  <div class="mini-bar"><div class="mini-fill green" style="width:${cg.pctSatisfied}%"></div></div>
-                  <span class="bar-pct">${cg.pctSatisfied}% satisfied</span>
-                </div>
-              </div>
-              <div class="cg-troop-badges">
-                ${cg.perBadge.map(pb => `
-                  <div class="cg-badge-stat">
-                    <span class="cg-badge-name"><a class="mb-name-link" onclick="showTroopMBDetail(${esc(JSON.stringify(pb.badge))})">${esc(pb.badge)}</a></span>
-                    <span class="cg-badge-count">${pb.cnt}</span>
-                    <span class="cg-badge-sub">earned${pb.prog ? ' · ' + pb.prog + ' in prog' : ''}</span>
-                  </div>`).join('')}
-              </div>
-            </div>`).join('')}
+          <div class="tbl-wrap">
+            <table>
+              <tbody>
+                ${choiceGroupTroopStats.map(cg => `
+                  <tr><td colspan="4" style="padding:6px 12px 4px;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);background:#fafafa;border-top:1px solid var(--border)">${esc(cg.label)} — ${cg.notSatisfied} scout${cg.notSatisfied !== 1 ? 's' : ''} unsatisfied</td></tr>
+                  ${[...cg.perBadge].sort((a, b) => a.badge.localeCompare(b.badge)).map(pb => {
+                    const need = n - pb.cnt;
+                    const pct  = n > 0 ? Math.round(need * 100 / n) : 0;
+                    const prog = pb.prog || 0;
+                    return `<tr ${need === 0 ? 'style="opacity:0.45"' : ''}>
+                      <td><a class="mb-name-link" onclick="showTroopMBDetail(${esc(JSON.stringify(pb.badge))})">${esc(pb.badge)}</a></td>
+                      <td style="text-align:right"><strong>${need}</strong></td>
+                      <td class="bar-cell">
+                        <div class="bar-wrap">
+                          <div class="mini-bar"><div class="mini-fill gold" style="width:${pct}%"></div></div>
+                          <span class="bar-pct">${pct}%</span>
+                        </div>
+                      </td>
+                      <td>${prog > 0 ? `<span class="pill pill-gold">${prog}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+                    </tr>`;
+                  }).join('')}`).join('')}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -1757,7 +1802,7 @@ function loadTroopView() {
                   <thead><tr><th>Merit Badge Activity</th><th style="text-align:right">Scouts Benefit</th><th class="hide-sm">Troop %</th></tr></thead>
                   <tbody>
                     ${activityPlannerAdj.map(a => `
-                      <tr ${a.is_eagle_required ? 'class="bold-row"' : ''}>
+                      <tr>
                         <td>
                           <a class="mb-name-link" onclick="showTroopMBDetail(${esc(JSON.stringify(a.activity_name))})">${esc(a.activity_name)}</a>
                           ${a.is_eagle_required ? '<span class="star-marker"> ★</span>' : ''}
@@ -1789,13 +1834,15 @@ function loadTroopView() {
         <div class="panel-body no-pad">
           <div class="tbl-wrap">
             <table class="sortable">
-              <thead><tr><th>Merit Badge</th><th>Eagle</th><th style="text-align:right">Scouts Need</th><th class="hide-sm">%</th></tr></thead>
+              <thead><tr><th>Merit Badge</th><th>Eagle</th><th style="text-align:right">Scouts Need</th><th style="text-align:right" class="hide-sm">In Progress</th><th style="text-align:right" class="hide-sm">Completed</th><th class="hide-sm">%</th></tr></thead>
               <tbody>
                 ${allMBGaps.map(mb => `
                   <tr>
                     <td><a class="mb-name-link" onclick="showTroopMBDetail(${esc(JSON.stringify(mb.name))})">${esc(mb.name)}</a></td>
                     <td>${mb.is_eagle_required ? '<span class="star-marker">★</span>' : ''}</td>
                     <td style="text-align:right">${mb.scouts_needing}</td>
+                    <td style="text-align:right" class="hide-sm">${mb.scouts_in_progress || 0}</td>
+                    <td style="text-align:right" class="hide-sm">${mb.scouts_completed || 0}</td>
                     <td class="bar-cell">
                       <div class="bar-wrap">
                         <div class="mini-bar">
@@ -1833,35 +1880,103 @@ function loadTroopView() {
         </div>
       </div>
 
-      <!-- Scouts by Patrol -->
-      ${hasPatrolCol && patrolNames.length > 0 ? `
-      <div class="panel panel-full">
-        <div class="panel-header">
-          <span class="panel-icon">⚑</span>
-          <h2>Scouts by Patrol</h2>
-          <span class="pill pill-blue" style="margin-left:auto">${patrolNames.filter(p => p !== 'Unassigned').length} patrol${patrolNames.filter(p => p !== 'Unassigned').length !== 1 ? 's' : ''}</span>
-        </div>
-        <div class="panel-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px">
-          ${patrolNames.map(patrol => {
-            const members = patrolGroups[patrol];
-            return `<div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-              <div style="padding:8px 12px;background:#fafafa;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-                <strong style="font-size:0.82rem">${patrol === 'Unassigned' ? '<span style="color:var(--muted)">Unassigned</span>' : esc(patrol)}</strong>
-                <span class="pill pill-gray" style="font-size:0.68rem">${members.length}</span>
-              </div>
-              <div style="padding:6px 8px">
-                ${members.map(m => `
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 4px;border-radius:4px">
-                    <a class="scout-link" style="font-size:0.82rem" onclick="goToScout(${m.user_id})">${esc(m.scout_name)}</a>
-                    <span style="font-size:0.72rem;color:var(--muted);white-space:nowrap;margin-left:8px">${esc(m.current_rank)}</span>
-                  </div>`).join('')}
-              </div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>` : ''}
+    </div><!-- /panels-grid -->
+  `;
+  relayoutPanels(document.getElementById('troop-content'));
+}
 
-      <!-- Full Roster -->
+// ─── Roster View ──────────────────────────────────────────────────────────────
+function loadRosterView() {
+  const el = document.getElementById('roster-content');
+  if (!db) return;
+  const n = (q1('SELECT COUNT(*) AS n FROM scouts') || {n: 0}).n;
+  if (n === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="ei">⚜️</div><p>No Scouts found in the database.</p></div>';
+    return;
+  }
+
+  const rosterPatrolSel = hasPatrolCol ? 'COALESCE(s.patrol,NULL) AS patrol,' : 'NULL AS patrol,';
+  const roster = q(`
+    SELECT TRIM(COALESCE(s.first_name,'')||' '||COALESCE(s.last_name,'')) AS scout_name,
+      s.user_id, ${rosterPatrolSel}
+      COALESCE(r.name,'New Scout') AS current_rank, COALESCE(r.level,0) AS rank_level,
+      (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='completed') AS total_mbs,
+      (SELECT COUNT(*) FROM scout_merit_badges smb
+         JOIN merit_badges mb ON mb.name=smb.merit_badge_name
+         WHERE smb.scout_user_id=s.user_id AND smb.status='completed' AND mb.is_eagle_required=1) AS eagle_mbs,
+      (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='in_progress') AS in_prog,
+      (SELECT COUNT(*) FROM scout_leadership sl WHERE sl.scout_user_id=s.user_id AND sl.approved=1) AS approved_positions
+    FROM scouts s LEFT JOIN ranks r ON r.id=s.current_rank_id
+    ORDER BY COALESCE(r.level,0) DESC, scout_name`);
+
+  const eagleSlotData = q(`
+    SELECT s.user_id,
+      (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='completed'
+         AND smb.merit_badge_name IN ('Camping','Citizenship in the Community','Citizenship in the Nation',
+           'Citizenship in Society','Citizenship in the World','Communication','Cooking',
+           'Family Life','First Aid','Personal Fitness','Personal Management')) AS mandatory_done,
+      CASE WHEN (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='completed'
+           AND smb.merit_badge_name IN ('Emergency Preparedness','Lifesaving')) >= 1 THEN 1 ELSE 0 END AS group_a,
+      CASE WHEN (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='completed'
+           AND smb.merit_badge_name IN ('Environmental Science','Sustainability')) >= 1 THEN 1 ELSE 0 END AS group_b,
+      CASE WHEN (SELECT COUNT(*) FROM scout_merit_badges smb WHERE smb.scout_user_id=s.user_id AND smb.status='completed'
+           AND smb.merit_badge_name IN ('Swimming','Hiking','Cycling')) >= 1 THEN 1 ELSE 0 END AS group_c
+    FROM scouts s`);
+
+  const slotByUser = {};
+  eagleSlotData.forEach(r => { slotByUser[r.user_id] = r.mandatory_done + r.group_a + r.group_b + r.group_c; });
+
+  const patrolGroups = {};
+  const unassignedScouts = [];
+  if (hasPatrolCol) {
+    roster.forEach(r => {
+      const p = (r.patrol || '').trim();
+      if (p && p.toLowerCase() !== 'unassigned') {
+        if (!patrolGroups[p]) patrolGroups[p] = [];
+        patrolGroups[p].push(r);
+      } else {
+        unassignedScouts.push(r);
+      }
+    });
+  }
+  const patrolNames = Object.keys(patrolGroups).sort((a, b) => a.localeCompare(b));
+  const namedPatrolCount = patrolNames.length;
+
+  const rosterRowHtml = r => {
+    const slots = slotByUser[r.user_id] || 0;
+    const epct  = Math.round(slots * 100 / EAGLE_SLOT_COUNT);
+    return `<tr>
+      <td><a class="scout-link" onclick="goToScout(${r.user_id})">${esc(r.scout_name)}</a></td>
+      <td>${esc(r.current_rank)}</td>
+      ${hasPatrolCol ? `<td>${r.patrol ? `<span class="pill pill-blue" style="font-size:0.72rem">⚑ ${esc(r.patrol)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>` : ''}
+      <td class="hide-sm" style="text-align:right">${r.total_mbs}</td>
+      <td>${slots}<span style="color:var(--muted)"> / ${EAGLE_SLOT_COUNT}</span></td>
+      <td class="bar-cell hide-sm">
+        <div class="bar-wrap">
+          <div class="mini-bar">
+            <div class="mini-fill ${epct >= 100 ? 'green' : 'gold'}" style="width:${epct}%"></div>
+          </div>
+          <span class="bar-pct">${epct}%</span>
+        </div>
+      </td>
+      <td style="text-align:right"><span class="pill pill-gold">${r.in_prog}</span></td>
+      <td class="hide-sm" style="text-align:right">${r.approved_positions > 0 ? `<span class="pill pill-green">${r.approved_positions}</span>` : '<span class="pill pill-gray">0</span>'}</td>
+    </tr>`;
+  };
+
+  const rosterThead = `<thead><tr>
+    <th>Scout</th>
+    <th>Current Rank</th>
+    ${hasPatrolCol ? '<th>Patrol</th>' : ''}
+    <th class="hide-sm" style="text-align:right">Total MBs</th>
+    <th>Eagle Slots</th>
+    <th class="hide-sm">Slot Progress</th>
+    <th style="text-align:right">In Progress</th>
+    <th class="hide-sm" style="text-align:right">Leadership</th>
+  </tr></thead>`;
+
+  el.innerHTML = `
+    <div class="panels-grid">
       <div class="panel panel-full">
         <div class="panel-header">
           <span class="panel-icon">📋</span>
@@ -1871,48 +1986,54 @@ function loadTroopView() {
         <div class="panel-body no-pad">
           <div class="tbl-wrap">
             <table class="sortable">
-              <thead>
-                <tr>
-                  <th>Scout</th>
-                  <th>Current Rank</th>
-                  ${hasPatrolCol ? '<th>Patrol</th>' : ''}
-                  <th class="hide-sm" style="text-align:right">Total MBs</th>
-                  <th>Eagle Slots</th>
-                  <th class="hide-sm">Slot Progress</th>
-                  <th style="text-align:right">In Progress</th>
-                  <th class="hide-sm" style="text-align:right">Leadership</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${roster.map(r => {
-                  const slots = slotByUser[r.user_id] || 0;
-                  const epct  = Math.round(slots * 100 / EAGLE_SLOT_COUNT);
-                  return `<tr>
-                    <td><a class="scout-link" onclick="goToScout(${r.user_id})"><strong>${esc(r.scout_name)}</strong></a></td>
-                    <td>${esc(r.current_rank)}</td>
-                    ${hasPatrolCol ? `<td>${r.patrol ? `<span class="pill pill-blue" style="font-size:0.72rem">⚑ ${esc(r.patrol)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>` : ''}
-                    <td class="hide-sm" style="text-align:right">${r.total_mbs}</td>
-                    <td>${slots}<span style="color:var(--muted)"> / ${EAGLE_SLOT_COUNT}</span></td>
-                    <td class="bar-cell hide-sm">
-                      <div class="bar-wrap">
-                        <div class="mini-bar">
-                          <div class="mini-fill ${epct >= 100 ? 'green' : 'gold'}" style="width:${epct}%"></div>
-                        </div>
-                        <span class="bar-pct">${epct}%</span>
-                      </div>
-                    </td>
-                    <td style="text-align:right"><span class="pill pill-gold">${r.in_prog}</span></td>
-                    <td class="hide-sm" style="text-align:right">${r.approved_positions > 0 ? `<span class="pill pill-green">${r.approved_positions}</span>` : '<span class="pill pill-gray">0</span>'}</td>
-                  </tr>`;
-                }).join('')}
-              </tbody>
+              ${rosterThead}
+              <tbody>${roster.map(rosterRowHtml).join('')}</tbody>
             </table>
           </div>
         </div>
       </div>
 
+      ${hasPatrolCol && (patrolNames.length > 0 || unassignedScouts.length > 0) ? `
+      <div class="panel panel-full">
+        <div class="panel-header">
+          <span class="panel-icon">⚑</span>
+          <h2>Grouped by Patrol</h2>
+          <span class="pill pill-blue" style="margin-left:auto">${namedPatrolCount} patrol${namedPatrolCount !== 1 ? 's' : ''}</span>
+        </div>
+        ${patrolNames.map(patrol => {
+          const members = patrolGroups[patrol];
+          return `
+          <div style="border-bottom:1px solid var(--border)">
+            <div style="padding:8px 14px;background:#fafafa;display:flex;align-items:center;gap:8px">
+              <strong style="font-size:0.82rem">${esc(patrol)}</strong>
+              <span class="pill pill-gray" style="font-size:0.68rem">${members.length}</span>
+            </div>
+            <div class="tbl-wrap">
+              <table class="sortable">
+                ${rosterThead}
+                <tbody>${members.map(rosterRowHtml).join('')}</tbody>
+              </table>
+            </div>
+          </div>`;
+        }).join('')}
+        ${unassignedScouts.length > 0 ? `
+        <div style="border-bottom:1px solid var(--border)">
+          <div style="padding:8px 14px;background:#fafafa;display:flex;align-items:center;gap:8px">
+            <strong style="font-size:0.82rem;color:var(--muted)">Unassigned</strong>
+            <span class="pill pill-gray" style="font-size:0.68rem">${unassignedScouts.length}</span>
+          </div>
+          <div class="tbl-wrap">
+            <table class="sortable">
+              ${rosterThead}
+              <tbody>${unassignedScouts.map(rosterRowHtml).join('')}</tbody>
+            </table>
+          </div>
+        </div>` : ''}
+      </div>` : ''}
+
     </div><!-- /panels-grid -->
   `;
+  relayoutPanels(el);
 }
 
 // ─── MB Detail Modal ──────────────────────────────────────────────────────────
