@@ -19,7 +19,7 @@ Install uv if you don't have it, then clone and set up:
 
 ```bash
 git clone <this-repo>
-cd bsa-db
+cd scouting-troop-stats
 uv sync
 ```
 
@@ -344,9 +344,9 @@ Add the server to your Claude Code MCP settings (`.claude/mcp_servers.json` or v
 {
   "scouting": {
     "command": "uv",
-    "args": ["run", "--directory", "/path/to/bsa-troop-stats", "scouting-mcp"],
+    "args": ["run", "--directory", "/path/to/scouting-troop-stats", "scouting-mcp"],
     "env": {
-      "BSA_DB_PATH": "/path/to/bsa-troop-stats/scouting_troop.db"
+      "BSA_DB_PATH": "/path/to/scouting-troop-stats/scouting_troop.db"
     }
   }
 }
@@ -387,7 +387,7 @@ uv run scouting --db /path/to/other.db sync-ranks
 ## Project Structure
 
 ```
-bsa-db/
+scouting-troop-stats/
   pyproject.toml              # Project config, defines `scouting` and `scouting-mcp` entry points
   uv.lock                     # Lockfile (auto-generated)
   dashboard.html              # Browser dashboard (open via http.server or file picker)
