@@ -59,7 +59,7 @@ python -m http.server 8000
 # open http://localhost:8000/dashboard.html
 ```
 
-Then click **Open Database** and select `sample_troop.db` instead of `scouting_troop.db`. All dashboard features — Scout records, Eagle MB gaps, activity planner, rank advancement, patrol groupings, and leadership history — are populated and browsable.
+Then click **Open Database** and select `sample_troop.db` instead of `scouting_troop.db`. All dashboard features — Scout records, Eagle MB gaps, activity planner, rank advancement, patrol groupings, leadership history, and tent matching — are populated and browsable. All 50 Scouts have birthdates so age-dependent features like tent analysis work out of the box.
 
 ### Opening the dashboard
 
@@ -73,26 +73,51 @@ Then open **http://localhost:8000/dashboard.html** in your browser. The dashboar
 
 If you can't run a local server, open `dashboard.html` directly in your browser and use the **Open Database** button to load `scouting_troop.db` manually from your filesystem.
 
-### Scout view
+### Troop tab
+
+Summary stats and troop-wide analytics:
+
+- **Summary cards** — total Scouts, merit badges earned, biggest Eagle MB gap, and how many Scouts are close to ranking up
+- **Rank distribution** — bar chart of how many Scouts are at each rank
+- **Eagle MB gaps** — every Eagle-required badge ranked by how many Scouts still need it, with in-progress counts
+- **Closest to next rank** — who needs the fewest requirements to advance, sorted by completion percentage
+- **Activity planner** — merit badges where ≥ 40% of the troop would benefit, flagged by Eagle status
+- **Eagle pipeline summary** — troop-wide view of Eagle MB slot completion across all Scouts
+
+### Roster tab
+
+Full troop roster in a sortable table:
+
+- Every Scout listed with current rank, patrol, total MBs earned, Eagle MB slot progress (with a mini progress bar), in-progress MB count, and approved leadership positions
+- Scouts grouped by patrol when patrol data is available
+- Click any Scout's name to jump directly to their Scout tab record
+
+### Scout tab
 
 Select any Scout by name to see their full record:
 
-- **Overview** — current rank, total merit badges earned (with Eagle count), in-progress MBs, and leadership days
+- **Overview** — current rank, total merit badges earned (with Eagle count), in-progress MBs, leadership days, and birthday with current age
 - **Rank progress** — which requirements for their next rank are complete, in progress, or still needed
 - **Merit badges** — completed and in-progress badges; click any in-progress badge to see a per-requirement breakdown
 - **Eagle pipeline** — a visual tracker showing exactly which of the 14 Eagle-required MBs they've earned, are working on, or still need (with "choose one" group slots)
 - **Leadership history** — all positions held with dates and approval status
 
-### Troop view
+### Tents tab
 
-Troop-wide analytics across all Scouts:
+A planning tool for assigning Scouts to tent crews for campouts and verifying BSA tenting rule compliance.
 
-- **Rank distribution** — bar chart of how many Scouts are at each rank
-- **Eagle MB gaps** — every Eagle-required badge ranked by how many Scouts still need it, with in-progress counts
-- **All-MB gaps** — top 20 merit badges by number of Scouts who haven't earned them
-- **Closest to next rank** — who needs the fewest requirements to advance, sorted by completion percentage
-- **Activity planner** — merit badges where ≥ 40% of the troop would benefit, flagged by Eagle status
-- **Roster** — full sortable table of all Scouts with rank, MB counts, and patrol
+- **Crews** — create as many named crews as you need; each is displayed as its own card
+- **Assigning Scouts** — a persistent scrollable list inside each crew card shows all Scouts; click a name to add them to the crew, or click the ✕ next to a crew member to remove them; filter by name or sort by name or age
+- **Analyze** — checks whether the crew can be validly tented under BSA rules: Scouts cannot tent alone, tentmates must be within 2 years of age of each other, and tents hold 2 or 3 Scouts
+- **Results** — valid crews show a proposed tent assignment grouped by tent; invalid crews show which Scouts can still be paired together and call out those who can't be accommodated
+- **Analyze All** — runs the check on every crew at once; the Scout picker collapses automatically so results are front and center (click "Add scouts" on any card to expand it again)
+- Crew assignments are saved in browser `localStorage` and restored automatically the next time you open the same database
+
+> Birthdates must be synced (via `sync-scouts`) for tent analysis to work. The `sample_troop.db` ships with birthdates for all 50 Scouts.
+
+### Settings tab
+
+Database management. Load a `.db` file via the file picker, or serve the project over HTTP to have it auto-load `scouting_troop.db` from the same directory. Once a database is loaded, the tab also shows a summary of what's in it (Scout count, rank data, etc.).
 
 ### How it works
 

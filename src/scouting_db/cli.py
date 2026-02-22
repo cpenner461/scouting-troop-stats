@@ -273,6 +273,21 @@ def cmd_sync_scouts(args):
             _abort_if_unauthorized(e, conn)
             click.echo(f"  {_err(f'[lead:{e.status_code}]')}", nl=False)
 
+        try:
+            profile = api.get_person_profile(uid)
+            birthdate = (
+                profile.get("dateOfBirth")
+                or profile.get("birthDate")
+                or profile.get("dob")
+                or (profile.get("profile") or {}).get("dateOfBirth")
+            )
+            if birthdate:
+                upsert_scout(conn, uid, birthdate=birthdate)
+                click.echo(f"  {_ok('dob')}", nl=False)
+        except ScoutingAPIError as e:
+            _abort_if_unauthorized(e, conn)
+            click.echo(f"  {_err(f'[dob:{e.status_code}]')}", nl=False)
+
         # Fetch per-requirement completion for in-progress MBs
         if not skip_reqs and mb_data:
             in_progress = [

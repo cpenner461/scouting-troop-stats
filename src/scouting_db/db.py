@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS scouts (
     scouting_member_id TEXT,
     patrol TEXT,
     current_rank_id INTEGER REFERENCES ranks(id),
+    birthdate TEXT,
     last_synced_at TEXT
 );
 
@@ -184,6 +185,12 @@ def get_connection(db_path=None):
 def init_db(conn, troop_name=None):
     conn.executescript(SCHEMA_SQL)
     conn.commit()
+    # Migrations for existing databases
+    try:
+        conn.execute("ALTER TABLE scouts ADD COLUMN birthdate TEXT")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # Column already exists
     if troop_name is not None:
         set_setting(conn, "troop_name", troop_name)
     seed_eagle_merit_badges(conn)
@@ -294,17 +301,18 @@ def upsert_requirements(conn, rank_id, requirements):
 
 
 def upsert_scout(conn, user_id, first_name=None, last_name=None,
-                  scouting_member_id=None, patrol=None):
+                  scouting_member_id=None, patrol=None, birthdate=None):
     conn.execute(
-        """INSERT INTO scouts (user_id, first_name, last_name, scouting_member_id, patrol, last_synced_at)
-           VALUES (?, ?, ?, ?, ?, ?)
+        """INSERT INTO scouts (user_id, first_name, last_name, scouting_member_id, patrol, birthdate, last_synced_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(user_id) DO UPDATE SET
                first_name = COALESCE(excluded.first_name, first_name),
                last_name = COALESCE(excluded.last_name, last_name),
                scouting_member_id = COALESCE(excluded.scouting_member_id, scouting_member_id),
                patrol = COALESCE(excluded.patrol, patrol),
+               birthdate = COALESCE(excluded.birthdate, birthdate),
                last_synced_at = excluded.last_synced_at""",
-        (user_id, first_name, last_name, scouting_member_id, patrol,
+        (user_id, first_name, last_name, scouting_member_id, patrol, birthdate,
          datetime.now(timezone.utc).isoformat()),
     )
     conn.commit()

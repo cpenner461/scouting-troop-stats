@@ -607,6 +607,167 @@
     table.sortable th.sort-asc,
     table.sortable th.sort-desc { color: var(--blue); }
 
+    /* ── Tent Matching ── */
+    .tent-layout { display: flex; min-height: calc(100vh - 56px); }
+    .tent-sidebar {
+      width: 220px; flex-shrink: 0; background: var(--card);
+      border-right: 1px solid var(--border); padding: 14px 10px;
+      display: flex; flex-direction: column; gap: 8px; overflow-y: auto;
+    }
+    .tent-main { flex: 1; padding: 20px; overflow-x: hidden; min-width: 0; }
+    .btn-new-crew {
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      background: var(--blue); color: white; border: none;
+      border-radius: 8px; padding: 8px 10px; font-size: 0.82rem; font-weight: 700;
+      cursor: pointer; width: 100%;
+    }
+    .btn-new-crew:hover { background: var(--blue-light); }
+    .crew-item {
+      display: flex; align-items: center; gap: 7px; padding: 8px; border-radius: 8px;
+      cursor: pointer; font-size: 0.83rem; font-weight: 600;
+      border: 1.5px solid transparent; transition: all 0.12s;
+    }
+    .crew-item:hover { background: var(--bg); }
+    .crew-item.active { background: #dbeafe; border-color: var(--blue); color: var(--blue); }
+    .crew-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .crew-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .crew-dot.valid   { background: var(--green); }
+    .crew-dot.invalid { background: var(--red); }
+    .crew-dot.unknown { background: #d1d5db; }
+    .crew-count { font-size: 0.72rem; color: var(--muted); flex-shrink: 0; }
+    .crew-item.active .crew-count { color: var(--blue); opacity: 0.8; }
+    .tent-crew-name-input {
+      flex: 1; font-size: 1.05rem; font-weight: 700; border: none;
+      border-bottom: 2px solid var(--border); outline: none; padding: 2px 0;
+      background: transparent; min-width: 0; color: #111827;
+    }
+    .tent-crew-name-input:focus { border-color: var(--blue); }
+    .tent-scouts-list { display: flex; flex-direction: column; gap: 5px; min-height: 36px; }
+    .tent-scout-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; background: var(--bg); border-radius: 8px; font-size: 0.85rem;
+    }
+    .tent-scout-name { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tent-scout-age   { color: var(--muted); font-size: 0.78rem; flex-shrink: 0; }
+    .tent-scout-noage { color: #d97706; font-size: 0.73rem; flex-shrink: 0; }
+    .btn-remove-scout {
+      background: none; border: none; color: #9ca3af; cursor: pointer;
+      font-size: 0.8rem; padding: 2px 5px; border-radius: 4px; flex-shrink: 0; line-height: 1;
+    }
+    .btn-remove-scout:hover { background: #fee2e2; color: var(--red); }
+    .tent-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+    .btn-tent { padding: 8px 16px; border-radius: 8px; font-size: 0.83rem; font-weight: 700; cursor: pointer; border: none; transition: all 0.12s; }
+    .btn-tent-primary  { background: var(--blue); color: white; }
+    .btn-tent-primary:hover:not(:disabled) { background: var(--blue-light); }
+    .btn-tent-primary:disabled { background: #9ca3af; cursor: default; }
+    .btn-tent-danger   { background: #fee2e2; color: #991b1b; border: 1.5px solid #fca5a5; }
+    .btn-tent-danger:hover { background: #fca5a5; }
+    .btn-tent-secondary { background: var(--bg); color: #374151; border: 1.5px solid var(--border); }
+    .btn-tent-secondary:hover { border-color: #9ca3af; }
+    .tent-results { margin-top: 20px; }
+    .tent-result-banner {
+      display: flex; align-items: center; gap: 8px; font-size: 0.9rem; font-weight: 700;
+      padding: 10px 14px; border-radius: 8px; margin-bottom: 12px;
+    }
+    .tent-result-banner.valid   { background: #d1fae5; color: var(--green-light); border: 1px solid #6ee7b7; }
+    .tent-result-banner.invalid { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .tent-group-list { display: flex; flex-direction: column; gap: 8px; }
+    .tent-group {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+      border-radius: 10px; border: 1.5px solid #6ee7b7; background: #f0fdf4;
+    }
+    .tent-group-label {
+      font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--green-light); font-weight: 700; white-space: nowrap; text-align: center; min-width: 46px;
+    }
+    .tent-group-scouts { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
+    .tent-group-scout {
+      background: #d1fae5; border-radius: 99px; padding: 3px 10px;
+      font-size: 0.78rem; font-weight: 600; color: var(--green-light);
+    }
+    .tent-group-age-range { font-size: 0.72rem; color: var(--green-light); white-space: nowrap; opacity: 0.8; }
+    .tent-reason {
+      background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px;
+      padding: 10px 14px; font-size: 0.82rem; color: #9a3412; line-height: 1.5;
+    }
+    .tent-toolbar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px;
+    }
+    .tent-summary {
+      font-size: 0.82rem; color: var(--muted); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .tent-crews-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+    .tent-crew-card .panel-body { padding: 14px 16px; }
+
+    /* Tent pool collapsible */
+    .tent-pool-details { margin-bottom: 14px; }
+    .tent-pool-details > .tent-scout-pool { margin-bottom: 0; margin-top: 6px; }
+    .tent-pool-summary {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: #6b7280; cursor: pointer;
+      list-style: none; display: flex; align-items: center; gap: 5px;
+      user-select: none; padding: 2px 0;
+    }
+    .tent-pool-summary::-webkit-details-marker { display: none; }
+    .tent-pool-summary::before { content: '▶'; font-size: 0.55rem; transition: transform 0.15s; }
+    .tent-pool-details[open] > .tent-pool-summary::before { transform: rotate(90deg); }
+
+    /* Tent scout pool (persistent scrollable list) */
+    .tent-scout-pool { margin-bottom: 14px; }
+    .pool-sort-bar {
+      display: flex; align-items: center; gap: 5px; margin-bottom: 5px;
+    }
+    .pool-sort-label { font-size: 0.72rem; color: var(--muted); }
+    .pool-sort-btn {
+      font-size: 0.72rem; padding: 2px 8px; border-radius: 99px; border: 1.5px solid var(--border);
+      background: white; color: #374151; cursor: pointer; font-weight: 600;
+    }
+    .pool-sort-btn.active { background: var(--blue); color: white; border-color: var(--blue); }
+    .pool-sort-btn:not(.active):hover { border-color: #9ca3af; }
+    .tent-pool-filter {
+      width: 100%; padding: 6px 10px; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 0.82rem; background: white; color: #111827;
+      box-sizing: border-box; margin-bottom: 6px; outline: none;
+    }
+    .tent-pool-filter:focus { border-color: var(--blue); }
+    .tent-pool-list {
+      max-height: 220px; overflow-y: auto; border: 1.5px solid var(--border);
+      border-radius: 8px; background: white;
+    }
+    .pool-scout {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 10px; cursor: pointer; font-size: 0.82rem;
+      border-bottom: 1px solid #f3f4f6; transition: background 0.1s;
+      user-select: none;
+    }
+    .pool-scout:last-child { border-bottom: none; }
+    .pool-scout.ps-in { background: #f0fdf4; color: #166534; }
+    .pool-scout.ps-in:hover { background: #dcfce7; }
+    .pool-scout.ps-avail:hover { background: var(--bg); }
+    .pool-scout-icon { font-size: 0.78rem; width: 14px; flex-shrink: 0; text-align: center; }
+    .pool-scout-name { flex: 1; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pool-scout-age { font-size: 0.73rem; opacity: 0.7; flex-shrink: 0; }
+    .pool-other-note {
+      padding: 6px 10px; font-size: 0.72rem; color: var(--muted);
+      border-top: 1px solid var(--border); text-align: center; font-style: italic;
+    }
+    .tent-partial-section { margin-top: 10px; }
+    .tent-partial-label {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: #6b7280; margin-bottom: 6px;
+    }
+    .tent-incompatible-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tent-incompatible-scout {
+      background: #fee2e2; border-radius: 99px; padding: 3px 10px;
+      font-size: 0.78rem; font-weight: 600; color: #991b1b;
+    }
+
     /* ── Responsive ── */
     @media (max-width: 900px) {
       .panels-pair { flex-direction: column; }
@@ -656,6 +817,7 @@
     <button class="tab-btn active" data-view="troop" onclick="switchView('troop',this)">Troop</button>
     <button class="tab-btn" data-view="roster" onclick="switchView('roster',this)">Roster</button>
     <button class="tab-btn" data-view="scout" onclick="switchView('scout',this)">Scout</button>
+    <button class="tab-btn" data-view="tents" onclick="switchView('tents',this)">Tents</button>
     <button class="tab-btn" data-view="db" id="db-tab" onclick="switchView('db',this)">Settings</button>
   </nav>
 </header>
@@ -726,6 +888,22 @@
   </div>
 </div>
 
+
+<!-- ══════════ TENT MATCHING VIEW ══════════ -->
+<div class="view" id="view-tents">
+  <div class="tent-main">
+    <div class="tent-toolbar">
+      <button class="btn-new-crew" style="width:auto;padding:7px 16px" onclick="addTentCrew()">+ New Crew</button>
+      <button class="btn-tent btn-tent-primary" id="tent-analyze-all-btn" onclick="tentAnalyzeAll()" style="display:none">⛺ Analyze All</button>
+    </div>
+    <div id="tent-editor">
+      <div class="empty-state">
+        <div class="ei">⛺</div>
+        <p>Load a database and create a crew to start building tent arrangements.</p>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════ MB DETAIL MODAL ══════════ -->
 <div id="mb-modal" class="mb-modal-overlay" onclick="if(event.target===this)closeMBModal()">
@@ -871,7 +1049,7 @@ function switchView(name, btn) {
   btn.classList.add('active');
   if (name === 'troop' && db) loadTroopView();
   if (name === 'roster' && db) loadRosterView();
-
+  if (name === 'tents') loadTentView();
 }
 
 // ─── Sortable tables ─────────────────────────────────────────────────────────
@@ -925,6 +1103,7 @@ async function loadDbBuffer(buf, filename) {
   const status = document.getElementById('db-status');
   await initSQL();
   db = new SQL.Database(new Uint8Array(buf));
+  _tentInitialized = false;
 
   // Quick sanity check
   const row = q1("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name='scouts'");
@@ -1111,7 +1290,7 @@ function loadScout(userId) {
   const ov = q1(`
     SELECT s.user_id,
       TRIM(COALESCE(s.first_name,'') || ' ' || COALESCE(s.last_name,'')) AS scout_name,
-      s.scouting_member_id, s.last_synced_at, ${patrolSel}
+      s.scouting_member_id, s.birthdate, s.last_synced_at, ${patrolSel}
       COALESCE(r.name, 'New Scout') AS current_rank,
       r.level AS rank_level,
       (SELECT date_completed FROM scout_advancements
@@ -1224,6 +1403,7 @@ function loadScout(userId) {
       <div class="rank-badge">${esc(ov.current_rank)}</div>
       ${ov.patrol ? `<div style="margin-top:6px"><span class="pill pill-blue" style="font-size:0.75rem">⚑ ${esc(ov.patrol)}</span></div>` : ''}
       ${ov.last_rank_date ? `<div>Rank earned: ${fmtDate(ov.last_rank_date)}</div>` : ''}
+      ${ov.birthdate ? `<div>Birthday: ${fmtDate(ov.birthdate)}${calcAge(ov.birthdate) !== null ? ` <span style="color:var(--muted)">(age ${calcAge(ov.birthdate)})</span>` : ''}</div>` : ''}
       ${ov.leadership_days ? `<div>Leadership: ${ov.leadership_days} days</div>` : ''}
       ${ov.last_synced_at ? `<div>Synced: ${fmtDt(ov.last_synced_at)}</div>` : ''}
       <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:0.72rem;color:var(--muted)">
@@ -2378,6 +2558,424 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeMBModal(); closeTroopMBModal(); closePipelineModal(); }
 });
 
+// ─── Tent Matching ────────────────────────────────────────────────────────────
+let tentCrews        = [];   // [{id, name, scouts:[userId], analysisResult}]
+let tentScoutMap     = {};   // userId -> {user_id, name, birthdate, age}
+let _tentInitialized = false;
+let _poolExpanded    = {};   // crewId -> bool (whether pool is explicitly expanded after analysis)
+let _poolSort        = 'name'; // 'name' | 'age'
+const _TENT_KEY = 'scouting_tents_v1';
+
+function _saveTentState() {
+  try {
+    localStorage.setItem(_TENT_KEY, JSON.stringify({
+      crews: tentCrews.map(({id, name, scouts}) => ({id, name, scouts}))
+    }));
+  } catch {}
+}
+
+function _loadTentState() {
+  tentCrews = [];
+  try {
+    const raw = localStorage.getItem(_TENT_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    const arr = saved.crews || (Array.isArray(saved) ? saved : []);
+    tentCrews = arr.map(c => ({
+      id: c.id, name: c.name || 'Crew',
+      scouts: Array.isArray(c.scouts) ? c.scouts : [],
+      analysisResult: null
+    }));
+  } catch {}
+}
+
+function loadTentView() {
+  if (!db) {
+    const el = document.getElementById('tent-editor');
+    if (el) el.innerHTML = '<div class="empty-state"><div class="ei">⛺</div><p>Load a database to use Tent Matching.</p></div>';
+    const btn = document.getElementById('tent-analyze-all-btn');
+    if (btn) btn.style.display = 'none';
+    return;
+  }
+  if (!_tentInitialized) {
+    const rows = q(`SELECT user_id,
+      TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) AS name,
+      birthdate FROM scouts ORDER BY last_name, first_name`);
+    tentScoutMap = {};
+    rows.forEach(r => {
+      tentScoutMap[String(r.user_id)] = {
+        user_id: String(r.user_id),
+        name: r.name || String(r.user_id),
+        birthdate: r.birthdate || null,
+        age: calcAge(r.birthdate)
+      };
+    });
+    _loadTentState();
+    tentCrews.forEach(c => { c.scouts = c.scouts.filter(uid => !!tentScoutMap[uid]); });
+    _tentInitialized = true;
+  }
+  _renderAllCrews();
+}
+
+function _renderAllCrews() {
+  const el = document.getElementById('tent-editor');
+  if (!el) return;
+
+  // Show/hide "Analyze All" button
+  const analyzeBtn = document.getElementById('tent-analyze-all-btn');
+  if (analyzeBtn) analyzeBtn.style.display = tentCrews.some(c => c.scouts.length >= 2) ? '' : 'none';
+
+  if (!tentCrews.length) {
+    el.innerHTML = `<div class="empty-state"><div class="ei">⛺</div><p>Create a crew to start assigning Scouts and checking tent arrangements.</p></div>`;
+    return;
+  }
+
+  // Summary line
+  const analyzed     = tentCrews.filter(c => c.analysisResult);
+  const validCount   = analyzed.filter(c => c.analysisResult.valid).length;
+  const invalidCount = analyzed.filter(c => !c.analysisResult.valid).length;
+  const pendingCount = tentCrews.length - analyzed.length;
+  const parts = [];
+  if (validCount)   parts.push(`<span style="color:var(--green);font-weight:700">${validCount} valid</span>`);
+  if (invalidCount) parts.push(`<span style="color:var(--red);font-weight:700">${invalidCount} invalid</span>`);
+  if (pendingCount) parts.push(`<span>${pendingCount} not yet analyzed</span>`);
+  const summaryHtml = parts.length
+    ? `<div class="tent-summary">${tentCrews.length} crew${tentCrews.length !== 1 ? 's' : ''}: ${parts.join(' · ')}</div>`
+    : '';
+
+  // Capture filter values and pool scroll positions before re-render
+  const _filterVals = {};
+  const _scrollTops = {};
+  document.querySelectorAll('[id^="tent-pool-filter-"]').forEach(input => {
+    const crewId = input.id.replace('tent-pool-filter-', '');
+    if (input.value) _filterVals[crewId] = input.value;
+  });
+  document.querySelectorAll('[id^="tent-pool-list-"]').forEach(list => {
+    const crewId = list.id.replace('tent-pool-list-', '');
+    if (list.scrollTop) _scrollTops[crewId] = list.scrollTop;
+  });
+  el.innerHTML = summaryHtml + `<div class="tent-crews-grid">${tentCrews.map(crew => _renderCrewCard(crew)).join('')}</div>`;
+  // Restore filter values, scroll positions, and re-apply filtering
+  Object.entries(_filterVals).forEach(([crewId, val]) => {
+    const input = document.getElementById(`tent-pool-filter-${crewId}`);
+    if (input) { input.value = val; _filterPool(crewId); }
+  });
+  Object.entries(_scrollTops).forEach(([crewId, top]) => {
+    const list = document.getElementById(`tent-pool-list-${crewId}`);
+    if (list) list.scrollTop = top;
+  });
+}
+
+function _renderCrewCard(crew) {
+  const takenElsewhere = new Set(tentCrews.filter(c => c.id !== crew.id).flatMap(c => c.scouts));
+  const allScouts = Object.values(tentScoutMap);
+  const result = crew.analysisResult;
+
+  const inCrew    = allScouts.filter(s =>  crew.scouts.includes(s.user_id))
+                             .sort((a, b) => a.name.localeCompare(b.name));
+  const available = allScouts.filter(s => !crew.scouts.includes(s.user_id) && !takenElsewhere.has(s.user_id))
+                             .sort((a, b) => _poolSort === 'age'
+                               ? (a.age ?? 999) - (b.age ?? 999) || a.name.localeCompare(b.name)
+                               : a.name.localeCompare(b.name));
+  const takenCount = allScouts.filter(s => takenElsewhere.has(s.user_id)).length;
+
+  // Crew members with remove buttons
+  const memberRows = inCrew.length === 0
+    ? `<div class="no-data" style="padding:8px 0;font-size:0.8rem">No scouts yet.</div>`
+    : inCrew.map(s => {
+        const ageHtml = s.age !== null
+          ? `<span class="tent-scout-age">Age ${s.age}</span>`
+          : `<span class="tent-scout-noage" title="Run sync-scouts to get birthdate">⚠ no birthdate</span>`;
+        return `<div class="tent-scout-row">
+          <span class="tent-scout-name">${esc(s.name)}</span>
+          ${ageHtml}
+          <button class="btn-remove-scout" onclick="tentRemoveScout('${crew.id}','${s.user_id}')" title="Remove">✕</button>
+        </div>`;
+      }).join('');
+
+  // Available scouts pool (excludes in-crew and taken-elsewhere)
+  const poolItems = available.map(s => {
+    const ageStr = s.age !== null ? `age ${s.age}` : '';
+    return `<div class="pool-scout ps-avail" data-name="${s.name.toLowerCase()}" onclick="tentAddScout('${crew.id}','${s.user_id}')">
+      <span class="pool-scout-icon">+</span>
+      <span class="pool-scout-name">${esc(s.name)}</span>
+      ${ageStr ? `<span class="pool-scout-age">${esc(ageStr)}</span>` : ''}
+    </div>`;
+  }).join('');
+
+  const takenNote = takenCount > 0
+    ? `<div class="pool-other-note">${takenCount} scout${takenCount !== 1 ? 's' : ''} assigned to other crews</div>`
+    : '';
+  const emptyNote = allScouts.length === 0
+    ? `<div style="padding:12px 10px;font-size:0.8rem;color:var(--muted);text-align:center">No scouts in database</div>`
+    : available.length === 0 && takenCount === 0
+      ? `<div style="padding:12px 10px;font-size:0.8rem;color:var(--muted);text-align:center">All scouts assigned</div>`
+      : '';
+
+  let resultHtml = '';
+  if (result) {
+    if (result.valid) {
+      const groupsHtml = result.assignment.map(tent => {
+        const ages = tent.map(s => s.age).filter(a => a !== null);
+        const lo = Math.min(...ages), hi = Math.max(...ages);
+        const ageRange = ages.length ? (lo === hi ? `Age ${lo}` : `Ages ${lo}–${hi}`) : '';
+        return `<div class="tent-group">
+          <div class="tent-group-label">${tent.length}-person<br>tent</div>
+          <div class="tent-group-scouts">${tent.map(s => `<span class="tent-group-scout">${esc(s.name)}${s.age !== null ? ` (${s.age})` : ''}</span>`).join('')}</div>
+          ${ageRange ? `<div class="tent-group-age-range">${esc(ageRange)}</div>` : ''}
+        </div>`;
+      }).join('');
+      resultHtml = `<div class="tent-results">
+        <div class="tent-result-banner valid">✓ Valid tenting arrangement</div>
+        <div class="tent-group-list">${groupsHtml}</div>
+      </div>`;
+    } else {
+      let partialHtml = '';
+      if (result.compatibleGroups && result.compatibleGroups.length) {
+        const compatGroupsHtml = result.compatibleGroups.map(tent => {
+          const ages = tent.map(s => s.age).filter(a => a !== null);
+          const lo = Math.min(...ages), hi = Math.max(...ages);
+          const ageRange = ages.length ? (lo === hi ? `Age ${lo}` : `Ages ${lo}–${hi}`) : '';
+          return `<div class="tent-group">
+            <div class="tent-group-label">${tent.length}-person<br>tent</div>
+            <div class="tent-group-scouts">${tent.map(s => `<span class="tent-group-scout">${esc(s.name)}${s.age !== null ? ` (${s.age})` : ''}</span>`).join('')}</div>
+            ${ageRange ? `<div class="tent-group-age-range">${esc(ageRange)}</div>` : ''}
+          </div>`;
+        }).join('');
+        partialHtml += `<div class="tent-partial-section">
+          <div class="tent-partial-label">Compatible groups:</div>
+          <div class="tent-group-list">${compatGroupsHtml}</div>
+        </div>`;
+      }
+      if (result.incompatible && result.incompatible.length) {
+        const badHtml = result.incompatible
+          .map(s => `<span class="tent-incompatible-scout">${esc(s.name)}${s.age !== null ? ` (${s.age})` : ''}</span>`)
+          .join('');
+        partialHtml += `<div class="tent-partial-section">
+          <div class="tent-partial-label">Can't be accommodated:</div>
+          <div class="tent-incompatible-list">${badHtml}</div>
+        </div>`;
+      }
+      resultHtml = `<div class="tent-results">
+        <div class="tent-result-banner invalid">✗ Cannot be tented</div>
+        ${partialHtml}
+      </div>`;
+    }
+  }
+
+  const canAnalyze = inCrew.length >= 2;
+  const poolOpen = result ? (_poolExpanded[crew.id] || false) : true;
+  return `<div class="tent-crew-card panel">
+    <div class="panel-header">
+      <span class="panel-icon">⛺</span>
+      <input class="tent-crew-name-input" id="tent-name-${crew.id}" value="${esc(crew.name)}"
+        onchange="tentRenameCrew('${crew.id}',this.value)" placeholder="Crew name">
+      <button class="btn-tent btn-tent-danger" style="flex-shrink:0;padding:5px 10px;font-size:0.78rem"
+        onclick="tentDeleteCrew('${crew.id}')" title="Delete crew">✕</button>
+    </div>
+    <div class="panel-body">
+      <div class="tent-scouts-list" style="margin-bottom:12px">${memberRows}</div>
+      <details class="tent-pool-details" ${poolOpen ? 'open' : ''} ontoggle="_onPoolToggle('${crew.id}',this.open)">
+        <summary class="tent-pool-summary">Add scouts</summary>
+        <div class="tent-scout-pool">
+          <div class="pool-sort-bar">
+            <span class="pool-sort-label">Sort:</span>
+            <button class="pool-sort-btn${_poolSort === 'name' ? ' active' : ''}" onclick="_setPoolSort('name')">Name</button>
+            <button class="pool-sort-btn${_poolSort === 'age'  ? ' active' : ''}" onclick="_setPoolSort('age')">Age</button>
+          </div>
+          <input type="text" class="tent-pool-filter" id="tent-pool-filter-${crew.id}"
+            placeholder="Filter scouts…" oninput="_filterPool('${crew.id}')">
+          <div class="tent-pool-list" id="tent-pool-list-${crew.id}">
+            ${emptyNote}${poolItems}${takenNote}
+          </div>
+        </div>
+      </details>
+      <div class="tent-actions">
+        <button class="btn-tent btn-tent-primary" onclick="tentAnalyze('${crew.id}')"
+          ${canAnalyze ? '' : 'disabled title="Need at least 2 Scouts"'}>Analyze</button>
+        ${result ? `<button class="btn-tent btn-tent-secondary" onclick="tentClearAnalysis('${crew.id}')">Clear</button>` : ''}
+      </div>
+      ${resultHtml}
+    </div>
+  </div>`;
+}
+
+// Tent scout pool filter (hides/shows pool rows in place — no re-render needed)
+function _filterPool(crewId) {
+  const input = document.getElementById(`tent-pool-filter-${crewId}`);
+  const list  = document.getElementById(`tent-pool-list-${crewId}`);
+  if (!input || !list) return;
+  const val = input.value.trim().toLowerCase();
+  list.querySelectorAll('.pool-scout').forEach(el => {
+    const name = el.dataset.name || '';
+    el.style.display = !val || name.includes(val) ? '' : 'none';
+  });
+}
+
+function _onPoolToggle(crewId, isOpen) {
+  _poolExpanded[crewId] = isOpen;
+}
+
+function _setPoolSort(by) {
+  _poolSort = by;
+  _renderAllCrews();
+}
+
+// Crew / scout CRUD
+function addTentCrew() {
+  if (!db) return;
+  const id = 'crew_' + Date.now();
+  tentCrews.push({id, name: `Crew ${tentCrews.length + 1}`, scouts: [], analysisResult: null});
+  _saveTentState();
+  _renderAllCrews();
+  setTimeout(() => { const n = document.getElementById(`tent-name-${id}`); if (n) { n.focus(); n.select(); } }, 40);
+}
+
+function tentRenameCrew(id, name) {
+  const crew = tentCrews.find(c => c.id === id);
+  if (!crew) return;
+  crew.name = name;
+  _saveTentState();
+  _renderAllCrews();
+}
+
+function tentDeleteCrew(id) {
+  tentCrews = tentCrews.filter(c => c.id !== id);
+  _saveTentState();
+  _renderAllCrews();
+}
+
+function tentAddScout(crewId, userId) {
+  const crew = tentCrews.find(c => c.id === crewId);
+  if (!crew || crew.scouts.includes(userId)) return;
+  crew.scouts.push(userId);
+  crew.analysisResult = null;
+  _saveTentState();
+  _renderAllCrews();
+}
+
+function tentRemoveScout(crewId, userId) {
+  const crew = tentCrews.find(c => c.id === crewId);
+  if (!crew) return;
+  crew.scouts = crew.scouts.filter(u => u !== userId);
+  crew.analysisResult = null;
+  _saveTentState();
+  _renderAllCrews();
+}
+
+function tentClearAnalysis(crewId) {
+  const crew = tentCrews.find(c => c.id === crewId);
+  if (crew) crew.analysisResult = null;
+  _renderAllCrews();
+}
+
+// ─── Tenting algorithm (DP) ───────────────────────────────────────────────────
+// A valid arrangement partitions scouts into tents of 2 or 3 where every
+// tentmate is within 2 years of age of each other.
+// Sorting by age first means only consecutive scouts need to be grouped,
+// so a linear DP works: dp[i] = scouts[0..i-1] can be validly tented.
+function _runTentAnalysis(scouts) {
+  if (scouts.length < 2) {
+    return {valid: false, reason: scouts.length === 0
+      ? 'No Scouts in this crew.'
+      : 'Only 1 Scout — Scouts cannot tent alone.'};
+  }
+  const noAge = scouts.filter(s => s.age === null);
+  if (noAge.length) {
+    return {valid: false, reason: `Missing birthdate for: ${noAge.map(s => s.name).join(', ')}. Run sync-scouts to pull birthdate data.`};
+  }
+  const sorted = [...scouts].sort((a, b) => a.age - b.age);
+  const n  = sorted.length;
+  const dp = new Array(n + 1).fill(false);
+  dp[0] = true;
+  for (let i = 1; i <= n; i++) {
+    if (i >= 2 && dp[i-2] && sorted[i-1].age - sorted[i-2].age <= 2) dp[i] = true;
+    if (i >= 3 && dp[i-3] && sorted[i-1].age - sorted[i-3].age <= 2) dp[i] = true;
+  }
+  if (!dp[n]) {
+    const {compatibleGroups, incompatible, reason} = _partialTentAssignment(sorted);
+    return {valid: false, reason, compatibleGroups, incompatible};
+  }
+  // Reconstruct one valid assignment (greedy from the end, prefer 3-person tents)
+  const assignment = [];
+  let i = n;
+  while (i > 0) {
+    if (i >= 3 && dp[i-3] && sorted[i-1].age - sorted[i-3].age <= 2) {
+      assignment.unshift(sorted.slice(i-3, i)); i -= 3;
+    } else {
+      assignment.unshift(sorted.slice(i-2, i)); i -= 2;
+    }
+  }
+  return {valid: true, assignment};
+}
+
+// When the full crew can't be tented, find the maximum number of scouts that
+// CAN be validly grouped, and report the rest as incompatible.
+// Uses a "skip" DP: f[i] = max scouts tentable from sorted[i..n-1], allowing
+// individual scouts to be skipped (marked incompatible).
+function _partialTentAssignment(sorted) {
+  const n = sorted.length;
+  const f = new Array(n + 2).fill(0);
+  for (let i = n - 1; i >= 0; i--) {
+    f[i] = f[i + 1]; // option: skip scout i
+    if (i + 1 < n && sorted[i+1].age - sorted[i].age <= 2)
+      f[i] = Math.max(f[i], 2 + f[i + 2]);
+    if (i + 2 < n && sorted[i+2].age - sorted[i].age <= 2)
+      f[i] = Math.max(f[i], 3 + f[i + 3]);
+  }
+  // Reconstruct: prefer 3-person > 2-person > skip
+  const compatibleGroups = [];
+  const incompatibleIds  = new Set();
+  let i = 0;
+  while (i < n) {
+    if (i + 2 < n && sorted[i+2].age - sorted[i].age <= 2 && 3 + f[i+3] === f[i]) {
+      compatibleGroups.push(sorted.slice(i, i + 3)); i += 3;
+    } else if (i + 1 < n && sorted[i+1].age - sorted[i].age <= 2 && 2 + f[i+2] === f[i]) {
+      compatibleGroups.push(sorted.slice(i, i + 2)); i += 2;
+    } else {
+      incompatibleIds.add(sorted[i].user_id); i += 1;
+    }
+  }
+  const incompatible = sorted.filter(s => incompatibleIds.has(s.user_id));
+  // Build a human-readable reason
+  let reason;
+  if (incompatible.length === n) {
+    reason = "No valid tent pairings exist among these Scouts.";
+  } else {
+    const loners = incompatible.filter(
+      s => !sorted.some(o => o !== s && Math.abs(o.age - s.age) <= 2)
+    );
+    const structural = incompatible.filter(s => !loners.includes(s));
+    const parts = [];
+    if (loners.length)
+      parts.push(`No compatible partner for: ${loners.map(s => `${s.name} (${s.age})`).join(', ')}.`);
+    if (structural.length)
+      parts.push(`Age distribution prevents valid tent splits for: ${structural.map(s => `${s.name} (${s.age})`).join(', ')}.`);
+    reason = parts.join(' ');
+  }
+  return {compatibleGroups, incompatible, reason};
+}
+
+function tentAnalyze(crewId) {
+  const crew = tentCrews.find(c => c.id === crewId);
+  if (!crew) return;
+  crew.analysisResult = _runTentAnalysis(crew.scouts.map(uid => tentScoutMap[uid]).filter(Boolean));
+  _poolExpanded[crewId] = false;
+  _saveTentState();
+  _renderAllCrews();
+}
+
+function tentAnalyzeAll() {
+  tentCrews.forEach(crew => {
+    if (crew.scouts.length >= 2) {
+      crew.analysisResult = _runTentAnalysis(crew.scouts.map(uid => tentScoutMap[uid]).filter(Boolean));
+      _poolExpanded[crew.id] = false;
+    }
+  });
+  _saveTentState();
+  _renderAllCrews();
+}
+
 // ─── Utilities ────────────────────────────────────────────────────────────────
 function esc(str) {
   if (str == null) return '';
@@ -2389,6 +2987,17 @@ function esc(str) {
 }
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function calcAge(dateStr) {
+  if (!dateStr) return null;
+  const dob = new Date(dateStr.split('T')[0] + 'T00:00:00');
+  if (isNaN(dob)) return null;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  return age;
+}
 
 function fmtDate(s) {
   if (!s) return '—';

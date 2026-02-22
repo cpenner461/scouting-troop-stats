@@ -120,6 +120,10 @@ class ScoutingAPI:
             f"/advancements/youth/{user_id}/leadershipPositionHistory"
         )
 
+    def get_person_profile(self, user_id):
+        """Auth endpoint: person profile data (includes birthdate)."""
+        return self._request(f"/persons/v2/{user_id}/personprofile")
+
     def validate_token(self, user_id):
         """Verify the token is valid by making a lightweight auth-required request.
 
