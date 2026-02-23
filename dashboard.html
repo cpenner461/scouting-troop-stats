@@ -69,8 +69,9 @@
     /* ── DB View ── */
     .db-view-content {
       display: flex;
-      flex-direction: column;
-      align-items: center;
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: center;
       gap: 20px;
       padding: 40px 20px;
     }
@@ -130,6 +131,10 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
+      position: sticky;
+      top: 56px;
+      height: calc(100vh - 56px);
+      overflow: hidden;
     }
     .sidebar-label {
       font-size: 0.68rem;
@@ -153,63 +158,55 @@
     }
     select:focus { outline: none; border-color: var(--blue); }
 
-    .scout-typeahead { position: relative; }
-    .scout-typeahead input {
-      width: 100%;
-      padding: 9px 10px;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      font-size: 0.875rem;
-      box-sizing: border-box;
-      background: white;
-      color: #111827;
+    .scout-picker { display: flex; flex-direction: column; gap: 6px; flex: 1; overflow: hidden; min-height: 0; }
+    .scout-filter-input {
+      width: 100%; padding: 7px 10px; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 0.82rem; background: white; color: #111827;
+      box-sizing: border-box; outline: none; flex-shrink: 0;
     }
-    .scout-typeahead input:focus { outline: none; border-color: var(--blue); }
-    .scout-typeahead input:disabled { color: var(--muted); background: var(--bg); }
-    .scout-dropdown {
-      display: none;
-      position: absolute;
-      top: calc(100% - 1px);
-      left: 0; right: 0;
-      background: white;
-      border: 1.5px solid var(--blue);
-      border-top: none;
-      border-radius: 0 0 8px 8px;
-      max-height: 260px;
-      overflow-y: auto;
-      z-index: 200;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    .scout-filter-input:focus { border-color: var(--blue); }
+    .scout-filter-input:disabled { color: var(--muted); background: var(--bg); }
+    .scout-list {
+      flex: 1; min-height: 0; overflow-y: auto; border: 1.5px solid var(--border);
+      border-radius: 8px; background: white;
     }
-    .scout-dropdown.open { display: block; }
-    .scout-dd-item {
-      padding: 8px 10px;
-      font-size: 0.875rem;
-      cursor: pointer;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    .scout-list-item {
+      padding: 8px 10px; font-size: 0.82rem; cursor: pointer;
+      border-bottom: 1px solid #f3f4f6; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; transition: background 0.1s;
     }
-    .scout-dd-item:hover, .scout-dd-item.kbd-active { background: var(--bg); }
-    .scout-dd-empty { padding: 8px 10px; font-size: 0.875rem; color: var(--muted); }
+    .scout-list-item:last-child { border-bottom: none; }
+    .scout-list-item:hover { background: var(--bg); }
+    .scout-list-item.active { background: #dbeafe; color: var(--blue); font-weight: 600; }
 
     .scout-meta-card {
-      background: var(--bg);
-      border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 0.8rem;
-      line-height: 1.6;
-      color: var(--muted);
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
     }
     .scout-meta-card .rank-badge {
       display: inline-block;
       background: var(--blue);
       color: white;
-      padding: 2px 10px;
+      padding: 4px 14px;
       border-radius: 99px;
-      font-size: 0.75rem;
+      font-size: 0.82rem;
       font-weight: 700;
-      margin-bottom: 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
+    .scout-meta-items {
+      display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
+      font-size: 0.82rem; color: var(--muted);
+    }
+    .scout-meta-item { display: flex; gap: 4px; align-items: baseline; white-space: nowrap; }
+    .scout-meta-label { font-weight: 600; color: #374151; }
 
     /* ── Stat Cards ── */
     .stats-grid {
@@ -846,11 +843,17 @@
 
     <aside class="scout-sidebar">
       <div class="sidebar-label">Select Scout</div>
-      <div class="scout-typeahead" id="scout-typeahead">
-        <input type="text" id="scout-input" placeholder="Load a database first…" autocomplete="off" disabled>
-        <div class="scout-dropdown" id="scout-dropdown"></div>
+      <div class="scout-picker" id="scout-picker">
+        <div class="pool-sort-bar">
+          <span class="pool-sort-label">Sort:</span>
+          <button class="pool-sort-btn active" data-sort="last" onclick="_sortScoutList('last')">Last ↑</button>
+          <button class="pool-sort-btn" data-sort="first" onclick="_sortScoutList('first')">First</button>
+        </div>
+        <input type="text" id="scout-filter" class="scout-filter-input"
+          placeholder="Load a database first…" autocomplete="off" disabled
+          oninput="_filterScoutList()">
+        <div class="scout-list" id="scout-list"></div>
       </div>
-      <div id="scout-meta"></div>
     </aside>
 
     <div class="scout-main">
@@ -1050,6 +1053,7 @@ function switchView(name, btn) {
   if (name === 'troop' && db) loadTroopView();
   if (name === 'roster' && db) loadRosterView();
   if (name === 'tents') loadTentView();
+  localStorage.setItem('activeTab', name);
 }
 
 // ─── Sortable tables ─────────────────────────────────────────────────────────
@@ -1084,12 +1088,25 @@ document.addEventListener('click', function(e) {
 function goToScout(userId) {
   const scoutTab = document.querySelector('.tab-btn[data-view="scout"]');
   switchView('scout', scoutTab);
-  const scout = _scoutList.find(s => String(s.user_id) === String(userId));
-  const input = document.getElementById('scout-input');
-  input.value = scout ? scout.name : '';
-  _closeDropdown();
-  loadScout(userId);
+  _selectScout(userId);
+  const activeItem = document.querySelector('.scout-list-item.active');
+  if (activeItem) activeItem.scrollIntoView({ block: 'nearest' });
 }
+
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  if (!document.getElementById('view-scout').classList.contains('active')) return;
+  if (document.activeElement === document.getElementById('scout-filter')) return;
+  if (_scoutList.length === 0) return;
+  e.preventDefault();
+  const idx = _scoutList.findIndex(s => s.user_id === currentScoutId);
+  const next = e.key === 'ArrowRight'
+    ? (idx < 0 ? 0 : (idx + 1) % _scoutList.length)
+    : (idx < 0 ? _scoutList.length - 1 : (idx - 1 + _scoutList.length) % _scoutList.length);
+  _selectScout(_scoutList[next].user_id);
+  const activeItem = document.querySelector('.scout-list-item.active');
+  if (activeItem) activeItem.scrollIntoView({ block: 'nearest' });
+});
 
 // ─── DB loading ──────────────────────────────────────────────────────────────
 async function initSQL() {
@@ -1158,10 +1175,11 @@ async function loadDbBuffer(buf, filename) {
   document.getElementById('db-info-card').style.display = '';
 
   loadScoutList();
-  // Switch to Troop view and render it
-  const troopBtn = document.querySelector('.tab-btn[data-view="troop"]');
-  switchView('troop', troopBtn);
-  loadTroopView();
+  // Restore last-used tab, falling back to Troop
+  const savedTab = localStorage.getItem('activeTab') || 'troop';
+  const tabBtn = document.querySelector(`.tab-btn[data-view="${savedTab}"]`)
+              || document.querySelector('.tab-btn[data-view="troop"]');
+  switchView(savedTab, tabBtn);
 }
 
 document.getElementById('db-file').addEventListener('change', async function (e) {
@@ -1192,88 +1210,73 @@ document.getElementById('db-file').addEventListener('change', async function (e)
   }
 })();
 
-// ─── Scout typeahead ─────────────────────────────────────────────────────────
-let _scoutList = [];  // [{user_id, name}]
-let _ddOpen = false;
-let _activeIdx = -1;
+// ─── Scout list picker ───────────────────────────────────────────────────────
+let _scoutList = [];   // [{user_id, first_name, last_name, name}]
+let _scoutSort    = 'last'; // 'last' | 'first'
+let _scoutSortDir = 'asc';  // 'asc'  | 'desc'
 
-function _renderDropdown(filter) {
-  const dd = document.getElementById('scout-dropdown');
-  const lc = (filter || '').toLowerCase();
-  const matches = lc ? _scoutList.filter(s => s.name.toLowerCase().includes(lc)) : _scoutList;
-  if (!matches.length) {
-    dd.innerHTML = '<div class="scout-dd-empty">No match</div>';
+function _renderScoutList() {
+  const list = document.getElementById('scout-list');
+  if (!list) return;
+  list.innerHTML = _scoutList.map(s =>
+    `<div class="scout-list-item${s.user_id === currentScoutId ? ' active' : ''}"
+      data-uid="${s.user_id}" data-name="${s.name.toLowerCase()}"
+      onclick="_selectScout(${s.user_id})">${esc(s.name)}</div>`
+  ).join('');
+}
+
+function _filterScoutList() {
+  const input = document.getElementById('scout-filter');
+  const list  = document.getElementById('scout-list');
+  if (!input || !list) return;
+  const val = input.value.trim().toLowerCase();
+  list.querySelectorAll('.scout-list-item').forEach(el => {
+    el.style.display = !val || el.dataset.name.includes(val) ? '' : 'none';
+  });
+}
+
+function _applySortScoutList() {
+  const dir = _scoutSortDir === 'asc' ? 1 : -1;
+  _scoutList.sort((a, b) => dir * (_scoutSort === 'first'
+    ? a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name)
+    : a.last_name.localeCompare(b.last_name)   || a.first_name.localeCompare(b.first_name)));
+  document.querySelectorAll('[data-sort]').forEach(btn => {
+    const active = btn.dataset.sort === _scoutSort;
+    btn.classList.toggle('active', active);
+    const label = btn.dataset.sort === 'last' ? 'Last' : 'First';
+    btn.textContent = active ? `${label} ${_scoutSortDir === 'asc' ? '↑' : '↓'}` : label;
+  });
+}
+
+function _sortScoutList(by) {
+  if (by === _scoutSort) {
+    _scoutSortDir = _scoutSortDir === 'asc' ? 'desc' : 'asc';
   } else {
-    dd.innerHTML = matches.map(s =>
-      `<div class="scout-dd-item" data-uid="${esc(String(s.user_id))}">${esc(s.name)}</div>`
-    ).join('');
+    _scoutSort = by;
+    _scoutSortDir = 'asc';
   }
-  _activeIdx = -1;
-  dd.classList.add('open');
-  _ddOpen = true;
+  _applySortScoutList();
+  _renderScoutList();
+  _filterScoutList();
 }
 
-function _closeDropdown() {
-  document.getElementById('scout-dropdown').classList.remove('open');
-  _ddOpen = false;
-  _activeIdx = -1;
-}
-
-function _selectScoutItem(uid, name) {
-  document.getElementById('scout-input').value = name;
-  _closeDropdown();
+function _selectScout(uid) {
   loadScout(uid);
+  document.querySelectorAll('.scout-list-item').forEach(el => {
+    el.classList.toggle('active', Number(el.dataset.uid) === Number(uid));
+  });
 }
-
-(function initTypeahead() {
-  const input = document.getElementById('scout-input');
-  const dd    = document.getElementById('scout-dropdown');
-
-  input.addEventListener('focus', () => { if (!input.disabled) _renderDropdown(input.value); });
-  input.addEventListener('input', () => _renderDropdown(input.value));
-
-  input.addEventListener('keydown', e => {
-    const items = dd.querySelectorAll('.scout-dd-item');
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      _activeIdx = Math.min(_activeIdx + 1, items.length - 1);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      _activeIdx = Math.max(_activeIdx - 1, 0);
-    } else if (e.key === 'Enter') {
-      if (_activeIdx >= 0 && items[_activeIdx]) {
-        const it = items[_activeIdx];
-        _selectScoutItem(it.dataset.uid, it.textContent);
-      }
-      return;
-    } else if (e.key === 'Escape') {
-      _closeDropdown();
-      input.blur();
-      return;
-    } else {
-      return;
-    }
-    items.forEach((it, i) => it.classList.toggle('kbd-active', i === _activeIdx));
-    if (items[_activeIdx]) items[_activeIdx].scrollIntoView({ block: 'nearest' });
-  });
-
-  dd.addEventListener('mousedown', e => {
-    const item = e.target.closest('.scout-dd-item');
-    if (item) _selectScoutItem(item.dataset.uid, item.textContent);
-  });
-
-  document.addEventListener('click', e => {
-    if (_ddOpen && !e.target.closest('#scout-typeahead')) _closeDropdown();
-  });
-})();
 
 // ─── Scout View ───────────────────────────────────────────────────────────────
 function loadScoutList() {
-  _scoutList = q("SELECT user_id, TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) AS name FROM scouts ORDER BY last_name, first_name");
-  const input = document.getElementById('scout-input');
+  const rows = q("SELECT user_id, COALESCE(first_name,'') AS first_name, COALESCE(last_name,'') AS last_name FROM scouts");
+  _scoutList = rows.map(r => ({...r, name: (r.first_name + ' ' + r.last_name).trim()}));
+  _applySortScoutList();
+  const input = document.getElementById('scout-filter');
   input.disabled = false;
   input.value = '';
-  input.placeholder = _scoutList.length ? `Search ${_scoutList.length} Scouts…` : 'No Scouts found';
+  input.placeholder = _scoutList.length ? `Filter ${_scoutList.length} scouts…` : 'No Scouts found';
+  _renderScoutList();
 }
 
 function loadScout(userId) {
@@ -1281,7 +1284,6 @@ function loadScout(userId) {
   if (!userId) {
     document.getElementById('scout-content').innerHTML =
       '<div class="empty-state"><div class="ei">⚜️</div><p>Select a Scout from the list.</p></div>';
-    document.getElementById('scout-meta').innerHTML = '';
     return;
   }
 
@@ -1397,56 +1399,51 @@ function loadScout(userId) {
   const earnedRankSet = new Set(rankHistory.filter(r => r.status === 'completed').map(r => r.advancement_name));
   const curLevel      = ov.rank_level || 0;
 
-  // ── Sidebar meta ──
-  document.getElementById('scout-meta').innerHTML = `
-    <div class="scout-meta-card">
-      <div class="rank-badge">${esc(ov.current_rank)}</div>
-      ${ov.patrol ? `<div style="margin-top:6px"><span class="pill pill-blue" style="font-size:0.75rem">⚑ ${esc(ov.patrol)}</span></div>` : ''}
-      ${ov.last_rank_date ? `<div>Rank earned: ${fmtDate(ov.last_rank_date)}</div>` : ''}
-      ${ov.birthdate ? `<div>Birthday: ${fmtDate(ov.birthdate)}${calcAge(ov.birthdate) !== null ? ` <span style="color:var(--muted)">(age ${calcAge(ov.birthdate)})</span>` : ''}</div>` : ''}
-      ${ov.leadership_days ? `<div>Leadership: ${ov.leadership_days} days</div>` : ''}
-      ${ov.last_synced_at ? `<div>Synced: ${fmtDt(ov.last_synced_at)}</div>` : ''}
-      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:0.72rem;color:var(--muted)">
-        <div>User ID: ${esc(String(ov.user_id))}</div>
-        ${ov.scouting_member_id ? `<div>Member ID: ${esc(String(ov.scouting_member_id))}</div>` : ''}
-      </div>
+  // ── Scout summary card (first item in stats-grid) ──
+  const metaHtml = `
+    <div class="stat-card">
+      <div class="stat-label">Summary</div>
+      ${ov.patrol ? `<div style="margin:4px 0 2px"><span class="pill pill-blue" style="font-size:0.78rem">⚑ ${esc(ov.patrol)}</span></div>` : ''}
+      <div class="stat-sub">${[
+        ov.birthdate ? `${fmtDate(ov.birthdate)}${calcAge(ov.birthdate) !== null ? ` (age ${calcAge(ov.birthdate)})` : ''}` : '',
+        `ID ${esc(String(ov.user_id))}`,
+        ov.scouting_member_id ? `Member ${esc(String(ov.scouting_member_id))}` : '',
+        ov.leadership_days ? `${ov.leadership_days} days leadership` : '',
+      ].filter(Boolean).join(' · ')}</div>
     </div>`;
 
   // ── Render ──
   document.getElementById('scout-content').innerHTML = `
 
-    <!-- Stat Cards -->
+    <!-- Stat Cards + Meta -->
     <div class="stats-grid">
+      ${metaHtml}
       <div class="stat-card">
-        <div class="stat-label">Current Rank</div>
-        <div class="stat-value" style="font-size:1.3rem;line-height:1.2">${esc(ov.current_rank)}</div>
+        <div class="stat-label">Rank</div>
+        <div class="stat-value" style="font-size:1.2rem;line-height:1.2">${esc(ov.current_rank)}</div>
         <div class="stat-sub">${ov.last_rank_date ? 'Earned ' + fmtDate(ov.last_rank_date) : 'No date recorded'}</div>
       </div>
       <div class="stat-card gold">
-        <div class="stat-label">Eagle Req. Slots</div>
+        <div class="stat-label">Eagle Slots</div>
         <div class="stat-value">${slotsDone}<span style="font-size:1rem;font-weight:500"> / ${EAGLE_SLOT_COUNT}</span></div>
         <div class="prog-bar"><div class="prog-fill gold" style="width:${slotPct}%"></div></div>
-        <div class="stat-sub">${slotPct}% · ${ov.total_mbs || 0}/${EAGLE_TOTAL_MBS} total MBs${slotsInProg ? ' · ' + slotsInProg + ' slot' + (slotsInProg > 1 ? 's' : '') + ' in progress' : ''}</div>
+        <div class="stat-sub">${slotPct}%${slotsInProg ? ' · ' + slotsInProg + ' in progress' : ''}</div>
       </div>
       <div class="stat-card green">
-        <div class="stat-label">Total Merit Badges</div>
+        <div class="stat-label">Merit Badges</div>
         <div class="stat-value">${ov.total_mbs || 0}</div>
         <div class="stat-sub">${ov.mbs_in_progress || 0} in progress</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">${nextName ? 'Next: ' + nextName : 'Next Rank'}</div>
-        ${nextTotal > 0
-          ? `<div class="stat-value">${nextPct}%</div>
-             <div class="prog-bar"><div class="prog-fill" style="width:${nextPct}%"></div></div>
-             <div class="stat-sub">${nextDone} / ${nextTotal} requirements done</div>`
-          : `<div class="stat-value" style="font-size:1.3rem">—</div>
-             <div class="stat-sub">No requirement data · run sync-scouts</div>`}
       </div>
     </div>
 
     <!-- Rank Pipeline -->
     <div class="panel panel-full" style="margin-bottom:18px">
-      <div class="panel-header"><span class="panel-icon">🏅</span><h2>Rank Progress</h2></div>
+      <div class="panel-header">
+        <span class="panel-icon">🏅</span><h2>Rank Progress</h2>
+        ${nextTotal > 0
+          ? `<span class="pill pill-blue" style="margin-left:auto">${nextName ? esc(nextName) + ' · ' : ''}${nextDone} / ${nextTotal} requirements · ${nextPct}%</span>`
+          : nextName ? `<span class="pill" style="margin-left:auto;background:var(--bg);color:var(--muted)">No requirement data for ${esc(nextName)}</span>` : ''}
+      </div>
       <div class="panel-body">
         <div class="pipeline-wrap">
           <div class="pipeline">
@@ -2325,7 +2322,7 @@ function showTroopMBDetail(mbName) {
     JOIN scouts s ON s.user_id = smb.scout_user_id
     WHERE smb.merit_badge_name = ?
     ORDER BY
-      CASE smb.status WHEN 'completed' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END,
+      CASE smb.status WHEN 'in_progress' THEN 0 WHEN 'completed' THEN 1 ELSE 2 END,
       s.last_name, s.first_name`, [mbName]);
 
   document.getElementById('troop-mb-modal-title').textContent = mbName;
