@@ -1,7 +1,6 @@
 """SQLite database schema, initialization, and data storage."""
 
 import csv
-import json
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,8 +21,7 @@ CREATE TABLE IF NOT EXISTS ranks (
     program TEXT,
     image_url TEXT,
     version TEXT,
-    active INTEGER NOT NULL DEFAULT 1,
-    raw_json TEXT
+    active INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS requirements (
@@ -40,8 +38,7 @@ CREATE TABLE IF NOT EXISTS requirements (
     eagle_mb_required INTEGER,
     total_mb_required INTEGER,
     service_hours_required INTEGER,
-    months_since_last_rank INTEGER,
-    raw_json TEXT
+    months_since_last_rank INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS merit_badges (
@@ -72,7 +69,6 @@ CREATE TABLE IF NOT EXISTS scout_advancements (
     status TEXT,
     date_completed TEXT,
     date_started TEXT,
-    raw_json TEXT,
     UNIQUE(scout_user_id, advancement_type, advancement_id)
 );
 
@@ -83,7 +79,8 @@ CREATE TABLE IF NOT EXISTS scout_merit_badges (
     status TEXT NOT NULL,
     date_completed TEXT,
     date_started TEXT,
-    raw_json TEXT,
+    mb_api_id INTEGER,
+    mb_version_id TEXT,
     UNIQUE(scout_user_id, merit_badge_name)
 );
 
@@ -106,8 +103,7 @@ CREATE TABLE IF NOT EXISTS scout_leadership (
     unit TEXT,
     patrol TEXT,
     days_in_position INTEGER,
-    approved INTEGER NOT NULL DEFAULT 0,
-    raw_json TEXT
+    approved INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS mb_requirements (
@@ -119,8 +115,7 @@ CREATE TABLE IF NOT EXISTS mb_requirements (
     name TEXT,
     required INTEGER NOT NULL DEFAULT 1,
     children_required INTEGER,
-    sort_order TEXT,
-    raw_json TEXT
+    sort_order TEXT
 );
 
 CREATE TABLE IF NOT EXISTS scout_mb_requirement_completions (
@@ -131,7 +126,6 @@ CREATE TABLE IF NOT EXISTS scout_mb_requirement_completions (
     mb_version_id TEXT NOT NULL,
     completed INTEGER NOT NULL DEFAULT 0,
     date_completed TEXT,
-    raw_json TEXT,
     UNIQUE(scout_user_id, mb_requirement_id)
 );
 
@@ -185,12 +179,6 @@ def get_connection(db_path=None):
 def init_db(conn, troop_name=None):
     conn.executescript(SCHEMA_SQL)
     conn.commit()
-    # Migrations for existing databases
-    try:
-        conn.execute("ALTER TABLE scouts ADD COLUMN birthdate TEXT")
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass  # Column already exists
     if troop_name is not None:
         set_setting(conn, "troop_name", troop_name)
     seed_eagle_merit_badges(conn)
@@ -222,8 +210,8 @@ def upsert_ranks(conn, ranks_data):
     for rank in ranks:
         conn.execute(
             """INSERT OR REPLACE INTO ranks
-               (id, name, level, program_id, program, image_url, version, active, raw_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (id, name, level, program_id, program, image_url, version, active)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 int(rank["id"]),
                 rank["name"],
@@ -233,7 +221,6 @@ def upsert_ranks(conn, ranks_data):
                 rank.get("imageUrl200", rank.get("imageUrl100")),
                 rank.get("version"),
                 1 if str(rank.get("active", "True")).lower() == "true" else 0,
-                json.dumps(rank),
             ),
         )
         count += 1
@@ -264,8 +251,8 @@ def upsert_requirements(conn, rank_id, requirements):
                    (id, rank_id, parent_requirement_id, requirement_number,
                     list_number, short, name, required, children_required,
                     sort_order, eagle_mb_required, total_mb_required,
-                    service_hours_required, months_since_last_rank, raw_json)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    service_hours_required, months_since_last_rank)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     req_id,
                     rank_id,
@@ -281,7 +268,6 @@ def upsert_requirements(conn, rank_id, requirements):
                     _int_or_none(req.get("totalMBRequired")),
                     _int_or_none(req.get("serviceHoursRequired")),
                     _int_or_none(req.get("monthsSinceLastRankRequired")),
-                    json.dumps(req),
                 ),
             )
             count += 1
@@ -421,9 +407,9 @@ def store_youth_ranks(conn, user_id, ranks_response):
             conn.execute(
                 """INSERT OR REPLACE INTO scout_advancements
                    (scout_user_id, advancement_type, advancement_id,
-                    advancement_name, status, date_completed, raw_json)
-                   VALUES (?, 'rank', ?, ?, ?, ?, ?)""",
-                (user_id, rank_id, name, status, date_earned, json.dumps(rank)),
+                    advancement_name, status, date_completed)
+                   VALUES (?, 'rank', ?, ?, ?, ?)""",
+                (user_id, rank_id, name, status, date_earned),
             )
 
             # Only track Scouts BSA ranks (programId 2) for current rank
@@ -462,13 +448,15 @@ def store_youth_merit_badges(conn, user_id, mb_response):
             status = "in_progress"
 
         is_eagle = 1 if item.get("isEagleRequired") or item.get("eagleRequired") else 0
+        mb_api_id = item.get("id")
+        mb_version_id = str(item["versionId"]) if item.get("versionId") else None
 
         conn.execute(
             """INSERT OR REPLACE INTO scout_merit_badges
                (scout_user_id, merit_badge_name, status, date_completed,
-                date_started, raw_json)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (user_id, name, status, date_completed, date_started, json.dumps(item)),
+                date_started, mb_api_id, mb_version_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (user_id, name, status, date_completed, date_started, mb_api_id, mb_version_id),
         )
 
         conn.execute(
@@ -500,8 +488,8 @@ def upsert_mb_requirements(conn, mb_api_id, mb_version_id, requirements):
                 """INSERT OR REPLACE INTO mb_requirements
                    (id, mb_api_id, mb_version_id, parent_requirement_id,
                     requirement_number, name, required, children_required,
-                    sort_order, raw_json)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    sort_order)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     req_id,
                     mb_api_id,
@@ -512,7 +500,6 @@ def upsert_mb_requirements(conn, mb_api_id, mb_version_id, requirements):
                     1 if str(req.get("required", "True")).lower() == "true" else 0,
                     int(req["childrenRequired"]) if req.get("childrenRequired") else None,
                     req.get("sortOrder"),
-                    json.dumps(req),
                 ),
             )
             count += 1
@@ -547,8 +534,8 @@ def store_youth_mb_requirements(conn, user_id, mb_api_id, mb_version_id, require
             conn.execute(
                 """INSERT OR REPLACE INTO scout_mb_requirement_completions
                    (scout_user_id, mb_requirement_id, mb_api_id, mb_version_id,
-                    completed, date_completed, raw_json)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    completed, date_completed)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
                 (
                     user_id,
                     req_id,
@@ -556,7 +543,6 @@ def store_youth_mb_requirements(conn, user_id, mb_api_id, mb_version_id, require
                     str(mb_version_id),
                     completed,
                     date_completed,
-                    json.dumps(req),
                 ),
             )
             count += 1
@@ -626,8 +612,8 @@ def store_leadership(conn, user_id, positions):
         conn.execute(
             """INSERT OR REPLACE INTO scout_leadership
                (scout_user_id, position, start_date, end_date,
-                unit, patrol, days_in_position, approved, raw_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                unit, patrol, days_in_position, approved)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 user_id,
                 position_name,
@@ -637,7 +623,6 @@ def store_leadership(conn, user_id, positions):
                 pos.get("patrol"),
                 pos.get("numberOfDaysInPosition") or pos.get("daysInPosition"),
                 1 if pos.get("approvalStatus") or pos.get("approved") else 0,
-                json.dumps(pos),
             ),
         )
         count += 1

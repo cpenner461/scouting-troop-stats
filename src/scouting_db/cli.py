@@ -356,21 +356,20 @@ def cmd_discover(args):
     # Probe rank requirement endpoints using a sample in-progress rank
     print("\n--- Rank Requirement Endpoint Probing ---\n")
     sample_rank = conn.execute(
-        "SELECT raw_json FROM scout_advancements "
+        "SELECT advancement_id, advancement_name FROM scout_advancements "
         "WHERE scout_user_id = ? AND advancement_type = 'rank' "
         "AND status = 'in_progress' LIMIT 1",
         (uid,),
     ).fetchone()
     if not sample_rank:
         sample_rank = conn.execute(
-            "SELECT raw_json FROM scout_advancements "
+            "SELECT advancement_id, advancement_name FROM scout_advancements "
             "WHERE advancement_type = 'rank' AND status = 'in_progress' LIMIT 1"
         ).fetchone()
 
     if sample_rank:
-        rank = json.loads(sample_rank["raw_json"])
-        rank_id = rank["id"]
-        rank_name = rank.get("name", "Unknown")
+        rank_id = sample_rank["advancement_id"]
+        rank_name = sample_rank["advancement_name"] or "Unknown"
         print(f"  Sample rank: {rank_name} (id={rank_id})\n")
 
         rank_probes = [
@@ -395,21 +394,20 @@ def cmd_discover(args):
     # Probe MB requirement endpoints using a sample in-progress MB
     print("\n--- MB Requirement Endpoint Probing ---\n")
     sample = conn.execute(
-        "SELECT raw_json FROM scout_merit_badges "
+        "SELECT mb_api_id, mb_version_id, merit_badge_name FROM scout_merit_badges "
         "WHERE scout_user_id = ? AND status = 'in_progress' LIMIT 1",
         (uid,),
     ).fetchone()
     if not sample:
         sample = conn.execute(
-            "SELECT raw_json FROM scout_merit_badges "
+            "SELECT mb_api_id, mb_version_id, merit_badge_name FROM scout_merit_badges "
             "WHERE status = 'in_progress' LIMIT 1"
         ).fetchone()
 
     if sample:
-        mb = json.loads(sample["raw_json"])
-        mb_id = mb["id"]
-        version_id = mb["versionId"]
-        mb_name = mb["name"]
+        mb_id = sample["mb_api_id"]
+        version_id = sample["mb_version_id"]
+        mb_name = sample["merit_badge_name"]
         print(f"  Sample MB: {mb_name} (id={mb_id}, versionId={version_id})\n")
 
         mb_probes = [

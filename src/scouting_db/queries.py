@@ -184,7 +184,7 @@ def mb_requirement_detail(conn, merit_badge_name=None):
             ON smb.scout_user_id = smrc.scout_user_id
             AND smb.status = 'in_progress'
             AND smrc.mb_api_id IN (
-                SELECT json_extract(smb2.raw_json, '$.id')
+                SELECT smb2.mb_api_id
                 FROM scout_merit_badges smb2
                 WHERE smb2.scout_user_id = smb.scout_user_id
                   AND smb2.merit_badge_name = smb.merit_badge_name
