@@ -1,0 +1,64 @@
+{
+  "name": "troop-scout-stats",
+  "version": "1.0.0-poc",
+  "description": "Scouting Troop Statistics — Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "NODE_ENV=development electron .",
+    "prebuild": "node -e \"require('fs').copyFileSync('../dashboard.html', 'dashboard.html')\"",
+    "build:mac": "npm run prebuild && electron-builder --mac",
+    "build:win": "npm run prebuild && electron-builder --win",
+    "build:all": "npm run prebuild && electron-builder --mac --win",
+    "install-deps": "npm install"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "org.scouting.troop-stats",
+    "productName": "Troop Scout Stats",
+    "copyright": "Copyright © 2024 Troop Scout Stats",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build-resources"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "app/**/*",
+      "dashboard.html"
+    ],
+    "extraResources": [
+      {
+        "from": "python-bin/",
+        "to": "python-bin/",
+        "filter": ["**/*"]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] }
+      ]
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    },
+    "linux": {
+      "target": ["AppImage"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "dmg": {
+      "title": "Troop Scout Stats"
+    }
+  }
+}

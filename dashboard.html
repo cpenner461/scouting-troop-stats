@@ -817,6 +817,8 @@
     <button class="tab-btn" data-view="tents" onclick="switchView('tents',this)">Tents</button>
     <button class="tab-btn" data-view="db" id="db-tab" onclick="switchView('db',this)">Settings</button>
   </nav>
+  <!-- Shown only when running as the native desktop app -->
+  <button id="electron-sync-btn" style="display:none;background:rgba(255,255,255,0.15);color:white;border:none;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:0.78rem;font-weight:600;margin-left:8px;white-space:nowrap;letter-spacing:0.01em" title="Open sync panel">⇄ Sync</button>
 </header>
 
 <!-- ══════════ DB VIEW ══════════ -->
@@ -3014,6 +3016,34 @@ function fmtDt(s) {
     if (isNaN(d)) return s;
     return d.toLocaleDateString('en-US', {year:'numeric', month:'short', day:'numeric'});
   } catch { return s; }
+}
+
+// ─── Electron native-app integration ─────────────────────────────────────────
+// This block runs only when dashboard.html is loaded inside the Electron app.
+// It auto-loads the synced database from the OS user-data directory and
+// wires up the "⇄ Sync" header button to return to the launcher screen.
+if (window.electronAPI) {
+  // Show the Sync button in the header
+  const syncBtn = document.getElementById('electron-sync-btn');
+  if (syncBtn) {
+    syncBtn.style.display = '';
+    syncBtn.addEventListener('click', () => window.electronAPI.navigate('launcher'));
+  }
+
+  // Auto-load the database that was written by the sync process.
+  // Falls back gracefully if no database exists yet (first launch).
+  (async () => {
+    try {
+      const { dbPath } = await window.electronAPI.getPaths();
+      const buf = await window.electronAPI.readFile(dbPath);
+      if (buf) {
+        await loadDbBuffer(buf, 'scouting_troop.db');
+      }
+    } catch (e) {
+      // No database yet — user needs to sync first via the launcher.
+      console.log('[Electron] No database to auto-load:', e.message);
+    }
+  })();
 }
 </script>
 </body>
