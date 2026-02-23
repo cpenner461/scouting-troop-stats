@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Troop Scout Stats</title>
+  <link rel="stylesheet" href="launcher.css">
+</head>
+<body>
+
+<!-- macOS traffic-light / hiddenInset drag region -->
+<div class="titlebar-drag"></div>
+
+<main class="launcher">
+
+  <!-- ── Header ── -->
+  <div class="header">
+    <div class="logo">⚜️</div>
+    <h1>Troop Scout Stats</h1>
+    <p class="subtitle">Track advancement, plan activities, and manage your troop's progress — all offline, all private.</p>
+  </div>
+
+  <!-- ── Landing cards ── -->
+  <div class="cards" id="main-cards">
+
+    <div class="card" id="card-open">
+      <div class="card-icon">📂</div>
+      <h2>Open Database</h2>
+      <p>Load an existing <code>scouting_troop.db</code> file to view your troop's data.</p>
+      <button class="btn btn-secondary" id="btn-open-file">Open Database File</button>
+      <div id="open-status" class="status-msg"></div>
+    </div>
+
+    <div class="card card-primary" id="card-sync">
+      <div class="card-icon">🔄</div>
+      <h2>Sign In &amp; Sync</h2>
+      <p>Connect to Scouting.org and download the latest advancement data for your troop.</p>
+      <button class="btn btn-primary" id="btn-show-sync">Get Started</button>
+    </div>
+
+  </div>
+
+  <!-- ── Sync panel (shown after "Get Started") ── -->
+  <div class="sync-panel" id="sync-panel" style="display:none">
+
+    <button class="back-btn" id="btn-back">← Back</button>
+    <h2>Sign In to Scouting.org</h2>
+    <p class="sync-desc">
+      Enter your <strong>my.scouting.org</strong> credentials.
+      Your password is used only to authenticate and is never stored on disk.
+    </p>
+
+    <!-- Credential form -->
+    <form id="sync-form" autocomplete="on">
+
+      <div class="form-group">
+        <label for="f-username">Username</label>
+        <input type="text" id="f-username" placeholder="you@example.com"
+               autocomplete="username" spellcheck="false" required>
+      </div>
+
+      <div class="form-group">
+        <label for="f-password">Password</label>
+        <input type="password" id="f-password" placeholder="••••••••"
+               autocomplete="current-password" required>
+      </div>
+
+      <div class="form-group">
+        <label for="f-troop">Troop Name</label>
+        <input type="text" id="f-troop" placeholder="e.g. Troop 42"
+               autocomplete="organization">
+      </div>
+
+      <div class="form-group">
+        <label>
+          Roster CSV
+          <span class="optional"> — optional, needed for first sync or to add Scouts</span>
+        </label>
+        <div class="file-row">
+          <input type="text" id="f-csv-display" placeholder="No file selected" readonly tabindex="-1">
+          <button type="button" class="btn btn-sm" id="btn-browse-csv">Browse…</button>
+        </div>
+        <div class="hint">
+          Export from Scoutbook: <em>Reports → Export CSV → User Roster</em>
+        </div>
+      </div>
+
+      <div id="sync-error" class="error-msg" style="display:none"></div>
+
+      <button type="submit" class="btn btn-primary btn-wide" id="btn-sync">
+        Sign In &amp; Sync
+      </button>
+
+    </form>
+
+    <!-- Progress log (replaces form after submit) -->
+    <div id="sync-progress" style="display:none">
+      <div class="progress-header">
+        <div class="spinner" id="sync-spinner"></div>
+        <span id="progress-title">Syncing…</span>
+      </div>
+      <div class="log" id="sync-log"></div>
+      <button class="btn btn-primary btn-wide" id="btn-view-dashboard"
+              style="display:none" onclick="goToDashboard()">
+        View Dashboard →
+      </button>
+    </div>
+
+  </div>
+
+</main>
+
+<script src="launcher.js"></script>
+</body>
+</html>
