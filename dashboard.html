@@ -3030,6 +3030,19 @@ if (window.electronAPI) {
     syncBtn.addEventListener('click', () => window.electronAPI.navigate('launcher'));
   }
 
+  // macOS fix: with titleBarStyle:'hiddenInset', the OS creates an implicit
+  // ~22px drag region across the top of the window that swallows mouseover
+  // and click events — making the top of header buttons unreachable.
+  // Explicitly designating the header as the drag region and marking all
+  // interactive children as no-drag restores normal hover/click behaviour.
+  const headerEl = document.querySelector('header');
+  if (headerEl) {
+    headerEl.style.webkitAppRegion = 'drag';
+    headerEl.querySelectorAll('button, a, input, label, select').forEach(el => {
+      el.style.webkitAppRegion = 'no-drag';
+    });
+  }
+
   // Auto-load the database that was written by the sync process.
   // Falls back gracefully if no database exists yet (first launch).
   (async () => {
