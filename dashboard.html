@@ -14,9 +14,11 @@
       --red: #BF0000;
       --green: #00843D;
       --green-light: #065f46;
-      --bg: #f0f4f8;
+      --olive: #4a5e28;
+      --olive-dark: #344219;
+      --bg: #e8ead8;
       --card: #ffffff;
-      --border: #e5e7eb;
+      --border: #d4d8be;
       --muted: #6b7280;
       --shadow: 0 2px 10px rgba(0,0,0,0.08);
       --radius: 12px;
@@ -35,7 +37,7 @@
 
     /* ── Header ── */
     header {
-      background: var(--blue);
+      background: var(--olive);
       color: white;
       padding: 0 20px;
       height: 56px;
@@ -64,7 +66,7 @@
       letter-spacing: 0.02em;
     }
     .tab-btn:hover { background: rgba(255,255,255,0.12); color: white; }
-    .tab-btn.active { background: var(--gold); color: var(--blue-dark); }
+    .tab-btn.active { background: var(--gold); color: var(--olive-dark); }
 
     /* ── DB View ── */
     .db-view-content {
@@ -104,7 +106,7 @@
       align-items: center;
       gap: 6px;
       background: var(--gold);
-      color: var(--blue-dark);
+      color: var(--olive-dark);
       padding: 7px 14px;
       border-radius: 8px;
       cursor: pointer;
@@ -156,7 +158,7 @@
       color: #111827;
       appearance: auto;
     }
-    select:focus { outline: none; border-color: var(--blue); }
+    select:focus { outline: none; border-color: var(--olive); }
 
     .scout-picker { display: flex; flex-direction: column; gap: 6px; flex: 1; overflow: hidden; min-height: 0; }
     .scout-filter-input {
@@ -164,7 +166,7 @@
       border-radius: 8px; font-size: 0.82rem; background: white; color: #111827;
       box-sizing: border-box; outline: none; flex-shrink: 0;
     }
-    .scout-filter-input:focus { border-color: var(--blue); }
+    .scout-filter-input:focus { border-color: var(--olive); }
     .scout-filter-input:disabled { color: var(--muted); background: var(--bg); }
     .scout-list {
       flex: 1; min-height: 0; overflow-y: auto; border: 1.5px solid var(--border);
@@ -177,7 +179,7 @@
     }
     .scout-list-item:last-child { border-bottom: none; }
     .scout-list-item:hover { background: var(--bg); }
-    .scout-list-item.active { background: #dbeafe; color: var(--blue); font-weight: 600; }
+    .scout-list-item.active { background: #fef3c7; color: var(--gold-dark); font-weight: 600; }
 
     .scout-meta-card {
       background: var(--card);
@@ -192,8 +194,8 @@
     }
     .scout-meta-card .rank-badge {
       display: inline-block;
-      background: var(--blue);
-      color: white;
+      background: var(--gold);
+      color: var(--olive-dark);
       padding: 4px 14px;
       border-radius: 99px;
       font-size: 0.82rem;
@@ -260,7 +262,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      background: #fafafa;
+      background: #f0f2e4;
     }
     .panel-header h2 { font-size: 0.9rem; font-weight: 700; margin: 0; }
     .panel-icon { font-size: 1rem; line-height: 1; }
@@ -279,11 +281,11 @@
       color: var(--muted);
       border-bottom: 2px solid var(--border);
       white-space: nowrap;
-      background: #fafafa;
+      background: #f0f2e4;
     }
     td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
-    tbody tr:hover td { background: #f9fafb; }
+    tbody tr:hover td { background: #eaecdb; }
     .bold-row td { font-weight: 700; }
 
     /* ── Badges / Pills ── */
@@ -296,7 +298,7 @@
       font-weight: 700;
       white-space: nowrap;
     }
-    .pill-blue   { background: #dbeafe; color: #1e40af; }
+    .pill-blue   { background: #fef3c7; color: var(--gold-dark); }
     .pill-green  { background: #d1fae5; color: var(--green-light); }
     .pill-gold   { background: #fef3c7; color: var(--gold-dark); }
     .pill-red    { background: #fee2e2; color: #991b1b; }
@@ -343,7 +345,7 @@
     .choice-group.cg-progress  { border-color: #fcd34d; }
     .choice-group-header {
       padding: 8px 12px;
-      background: #f9fafb;
+      background: #eaecdb;
       font-size: 0.78rem;
       font-weight: 700;
       display: flex;
@@ -446,10 +448,10 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }
     .pipe-dot.done    { background: var(--green); color: white; }
-    .pipe-dot.current { background: var(--blue); color: white; }
-    .pipe-dot.next    { background: var(--gold); color: var(--blue-dark); border-color: var(--gold); }
+    .pipe-dot.current { background: var(--gold); color: var(--olive-dark); }
+    .pipe-dot.next    { background: var(--gold); color: var(--olive-dark); border-color: var(--gold); opacity: 0.55; }
     .pipe-label { font-size: 0.62rem; text-align: center; margin-top: 6px; color: var(--muted); max-width: 76px; line-height: 1.3; }
-    .pipe-label.current { color: var(--blue); font-weight: 700; }
+    .pipe-label.current { color: var(--gold-dark); font-weight: 700; }
     .pipe-label.done    { color: var(--green); }
 
     /* ── Mini Bar (inline) ── */
@@ -475,8 +477,8 @@
       background: white;
       color: var(--muted);
     }
-    .mini-tab:hover { border-color: var(--blue); color: var(--blue); }
-    .mini-tab.active { background: var(--blue); color: white; border-color: var(--blue); }
+    .mini-tab:hover { border-color: var(--olive); color: var(--olive); }
+    .mini-tab.active { background: var(--gold); color: var(--olive-dark); border-color: var(--gold); }
 
     /* ── Empty / No-data ── */
     .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
@@ -563,7 +565,7 @@
       border: 1px solid var(--border);
     }
     .req-node.node-done { border-color: #bbf7d0; background: #f0fdf4; }
-    .req-node.node-todo { background: #fafafa; }
+    .req-node.node-todo { background: #f0f2e4; }
     .req-node.is-note   { background: transparent; border-color: transparent; }
     .req-node.is-child  { border-radius: 6px; margin-bottom: 3px; }
     .req-node-row {
@@ -593,7 +595,7 @@
 
     /* Clickable rows */
     .clickable-row { cursor: pointer; }
-    .clickable-row:hover td { background: #f0f4f8 !important; }
+    .clickable-row:hover td { background: #eaecdb !important; }
     .mb-name-link { color: var(--blue); text-decoration: underline; text-decoration-style: dotted; }
     .scout-link { color: var(--blue); text-decoration: underline; text-decoration-style: dotted; cursor: pointer; }
 
@@ -614,31 +616,31 @@
     .tent-main { flex: 1; padding: 20px; overflow-x: hidden; min-width: 0; }
     .btn-new-crew {
       display: flex; align-items: center; justify-content: center; gap: 5px;
-      background: var(--blue); color: white; border: none;
+      background: var(--gold); color: var(--olive-dark); border: none;
       border-radius: 8px; padding: 8px 10px; font-size: 0.82rem; font-weight: 700;
       cursor: pointer; width: 100%;
     }
-    .btn-new-crew:hover { background: var(--blue-light); }
+    .btn-new-crew:hover { background: #e6a820; }
     .crew-item {
       display: flex; align-items: center; gap: 7px; padding: 8px; border-radius: 8px;
       cursor: pointer; font-size: 0.83rem; font-weight: 600;
       border: 1.5px solid transparent; transition: all 0.12s;
     }
     .crew-item:hover { background: var(--bg); }
-    .crew-item.active { background: #dbeafe; border-color: var(--blue); color: var(--blue); }
+    .crew-item.active { background: #fef3c7; border-color: var(--gold); color: var(--gold-dark); }
     .crew-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .crew-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
     .crew-dot.valid   { background: var(--green); }
     .crew-dot.invalid { background: var(--red); }
     .crew-dot.unknown { background: #d1d5db; }
     .crew-count { font-size: 0.72rem; color: var(--muted); flex-shrink: 0; }
-    .crew-item.active .crew-count { color: var(--blue); opacity: 0.8; }
+    .crew-item.active .crew-count { color: var(--gold-dark); opacity: 0.8; }
     .tent-crew-name-input {
       flex: 1; font-size: 1.05rem; font-weight: 700; border: none;
       border-bottom: 2px solid var(--border); outline: none; padding: 2px 0;
       background: transparent; min-width: 0; color: #111827;
     }
-    .tent-crew-name-input:focus { border-color: var(--blue); }
+    .tent-crew-name-input:focus { border-color: var(--olive); }
     .tent-scouts-list { display: flex; flex-direction: column; gap: 5px; min-height: 36px; }
     .tent-scout-row {
       display: flex; align-items: center; gap: 8px;
@@ -654,8 +656,8 @@
     .btn-remove-scout:hover { background: #fee2e2; color: var(--red); }
     .tent-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
     .btn-tent { padding: 8px 16px; border-radius: 8px; font-size: 0.83rem; font-weight: 700; cursor: pointer; border: none; transition: all 0.12s; }
-    .btn-tent-primary  { background: var(--blue); color: white; }
-    .btn-tent-primary:hover:not(:disabled) { background: var(--blue-light); }
+    .btn-tent-primary  { background: var(--gold); color: var(--olive-dark); }
+    .btn-tent-primary:hover:not(:disabled) { background: #e6a820; }
     .btn-tent-primary:disabled { background: #9ca3af; cursor: default; }
     .btn-tent-danger   { background: #fee2e2; color: #991b1b; border: 1.5px solid #fca5a5; }
     .btn-tent-danger:hover { background: #fca5a5; }
@@ -725,14 +727,14 @@
       font-size: 0.72rem; padding: 2px 8px; border-radius: 99px; border: 1.5px solid var(--border);
       background: white; color: #374151; cursor: pointer; font-weight: 600;
     }
-    .pool-sort-btn.active { background: var(--blue); color: white; border-color: var(--blue); }
+    .pool-sort-btn.active { background: var(--gold); color: var(--olive-dark); border-color: var(--gold); }
     .pool-sort-btn:not(.active):hover { border-color: #9ca3af; }
     .tent-pool-filter {
       width: 100%; padding: 6px 10px; border: 1.5px solid var(--border);
       border-radius: 8px; font-size: 0.82rem; background: white; color: #111827;
       box-sizing: border-box; margin-bottom: 6px; outline: none;
     }
-    .tent-pool-filter:focus { border-color: var(--blue); }
+    .tent-pool-filter:focus { border-color: var(--olive); }
     .tent-pool-list {
       max-height: 220px; overflow-y: auto; border: 1.5px solid var(--border);
       border-radius: 8px; background: white;
@@ -1880,7 +1882,7 @@ function loadTroopView() {
         </div>
         <div class="panel-body no-pad">
           <!-- Required badges section -->
-          <div style="padding:10px 14px 4px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-weight:700;background:#fafafa;border-bottom:1px solid var(--border)">Required — 11 mandatory badges</div>
+          <div style="padding:10px 14px 4px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-weight:700;background:#f0f2e4;border-bottom:1px solid var(--border)">Required — 11 mandatory badges</div>
           <div class="tbl-wrap">
             <table>
               <thead><tr><th>Merit Badge</th><th style="text-align:right">Need</th><th class="hide-sm">% of Troop</th><th>In Prog</th></tr></thead>
@@ -1906,12 +1908,12 @@ function loadTroopView() {
             </table>
           </div>
           <!-- Choice groups section -->
-          <div style="padding:10px 14px 4px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-weight:700;background:#fafafa;border-top:2px solid var(--border);border-bottom:1px solid var(--border)">Choose One from Each Group — 3 slots</div>
+          <div style="padding:10px 14px 4px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-weight:700;background:#f0f2e4;border-top:2px solid var(--border);border-bottom:1px solid var(--border)">Choose One from Each Group — 3 slots</div>
           <div class="tbl-wrap">
             <table>
               <tbody>
                 ${choiceGroupTroopStats.map(cg => `
-                  <tr><td colspan="4" style="padding:6px 12px 4px;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);background:#fafafa;border-top:1px solid var(--border)">${esc(cg.label)} — ${cg.notSatisfied} scout${cg.notSatisfied !== 1 ? 's' : ''} unsatisfied</td></tr>
+                  <tr><td colspan="4" style="padding:6px 12px 4px;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);background:#f0f2e4;border-top:1px solid var(--border)">${esc(cg.label)} — ${cg.notSatisfied} scout${cg.notSatisfied !== 1 ? 's' : ''} unsatisfied</td></tr>
                   ${[...cg.perBadge].sort((a, b) => a.badge.localeCompare(b.badge)).map(pb => {
                     const need = n - pb.cnt;
                     const pct  = n > 0 ? Math.round(need * 100 / n) : 0;
@@ -2187,7 +2189,7 @@ function loadRosterView() {
           const members = patrolGroups[patrol];
           return `
           <div style="border-bottom:1px solid var(--border)">
-            <div style="padding:8px 14px;background:#fafafa;display:flex;align-items:center;gap:8px">
+            <div style="padding:8px 14px;background:#f0f2e4;display:flex;align-items:center;gap:8px">
               <strong style="font-size:0.82rem">${esc(patrol)}</strong>
               <span class="pill pill-gray" style="font-size:0.68rem">${members.length}</span>
             </div>
@@ -2201,7 +2203,7 @@ function loadRosterView() {
         }).join('')}
         ${unassignedScouts.length > 0 ? `
         <div style="border-bottom:1px solid var(--border)">
-          <div style="padding:8px 14px;background:#fafafa;display:flex;align-items:center;gap:8px">
+          <div style="padding:8px 14px;background:#f0f2e4;display:flex;align-items:center;gap:8px">
             <strong style="font-size:0.82rem;color:var(--muted)">Unassigned</strong>
             <span class="pill pill-gray" style="font-size:0.68rem">${unassignedScouts.length}</span>
           </div>
@@ -2279,7 +2281,7 @@ function showMBDetail(mbName) {
       const roots = tree.filter(n => n.requirement_number || n.required == 1 || (n.children && n.children.length > 0));
       const doneCount = roots.filter(n => isNodeDone(n)).length;
       const pct = roots.length > 0 ? Math.round(doneCount * 100 / roots.length) : 0;
-      progressHTML = `<div style="padding:9px 20px;border-bottom:1px solid var(--border);background:#fafafa">
+      progressHTML = `<div style="padding:9px 20px;border-bottom:1px solid var(--border);background:#f0f2e4">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="flex:1"><div class="prog-bar" style="margin:0"><div class="prog-fill ${status === 'completed' ? 'green' : ''}" style="width:${pct}%"></div></div></div>
           <span style="font-size:0.8rem;color:var(--muted);white-space:nowrap">${doneCount} / ${roots.length} requirements done</span>

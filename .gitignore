@@ -6,3 +6,11 @@ __pycache__/
 *.pyc
 .venv/
 *.csv
+
+# Electron / Node
+native-app/node_modules/
+native-app/package-lock.json
+native-app/dist/
+native-app/out/
+native-app/.webpack/
+native-app/.vite/
