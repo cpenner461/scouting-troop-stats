@@ -3057,9 +3057,13 @@ if (window.electronAPI) {
   // and click events — making the top of header buttons unreachable.
   // Explicitly designating the header as the drag region and marking all
   // interactive children as no-drag restores normal hover/click behaviour.
+  // Also add left padding to clear the traffic-light window controls.
   const headerEl = document.querySelector('header');
   if (headerEl) {
     headerEl.style.webkitAppRegion = 'drag';
+    if (navigator.platform.startsWith('Mac')) {
+      headerEl.style.paddingLeft = '78px';
+    }
     headerEl.querySelectorAll('button, a, input, label, select').forEach(el => {
       el.style.webkitAppRegion = 'no-drag';
     });
