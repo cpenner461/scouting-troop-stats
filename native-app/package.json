@@ -1,16 +1,21 @@
 {
   "name": "troop-scout-stats",
-  "version": "1.0.0-poc",
+  "version": "1.0.0",
   "description": "Scouting Troop Statistics — Desktop App",
   "main": "main.js",
+  "author": "Troop Scout Stats Contributors",
+  "license": "MIT",
+  "private": true,
   "scripts": {
     "start": "electron .",
     "dev": "NODE_ENV=development electron .",
     "prebuild": "node -e \"require('fs').copyFileSync('../dashboard.html', 'dashboard.html')\"",
     "build:mac": "npm run prebuild && electron-builder --mac",
     "build:win": "npm run prebuild && electron-builder --win",
-    "build:all": "npm run prebuild && electron-builder --mac --win",
-    "install-deps": "npm install"
+    "build:linux": "npm run prebuild && electron-builder --linux",
+    "build:all": "npm run prebuild && electron-builder --mac --win --linux",
+    "generate-icons": "python3 scripts/generate-icons.py",
+    "postinstall": "electron-builder install-app-deps"
   },
   "devDependencies": {
     "electron": "^31.7.7",
@@ -19,7 +24,8 @@
   "build": {
     "appId": "org.scouting.troop-stats",
     "productName": "Troop Scout Stats",
-    "copyright": "Copyright © 2024 Troop Scout Stats",
+    "copyright": "Copyright © 2025 Troop Scout Stats",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "dist",
       "buildResources": "build-resources"
@@ -27,38 +33,94 @@
     "files": [
       "main.js",
       "preload.js",
-      "app/**/*",
-      "dashboard.html"
+      "dashboard.html",
+      "build-resources/icon.png",
+      "build-resources/icon.ico",
+      {
+        "from": "app",
+        "to": "app",
+        "filter": ["**/*"]
+      }
     ],
     "extraResources": [
       {
         "from": "python-bin/",
         "to": "python-bin/",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {
       "category": "public.app-category.productivity",
+      "icon": "build-resources/icon.icns",
       "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] }
-      ]
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "darkModeSupport": true
     },
     "win": {
+      "icon": "build-resources/icon.ico",
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "linux": {
-      "target": ["AppImage"]
+      "icon": "build-resources/icons",
+      "category": "Utility",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "desktop": {
+        "StartupWMClass": "troop-scout-stats"
+      }
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "installerIcon": "build-resources/icon.ico",
+      "uninstallerIcon": "build-resources/icon.ico"
     },
     "dmg": {
-      "title": "Troop Scout Stats"
+      "title": "Troop Scout Stats",
+      "icon": "build-resources/icon.icns"
     }
   }
 }

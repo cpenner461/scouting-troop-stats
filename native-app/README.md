@@ -1,7 +1,7 @@
 # Troop Scout Stats — Native Desktop App
 
-Electron-based desktop wrapper that ships the existing `dashboard.html` as a
-native macOS or Windows application — no terminal, no Python, no browser.
+Electron-based desktop application that ships the existing `dashboard.html` as a
+native macOS, Windows, or Linux application — no terminal, no Python, no browser.
 
 ---
 
@@ -41,15 +41,33 @@ on your `PATH` and the project's virtual environment must be set up
 
 ## Building a Distributable Installer
 
+### Prerequisites
+
+- **Node.js ≥ 18** and **npm**
+- **[uv](https://docs.astral.sh/uv/)** (for building the Python sync binary)
+- **Python 3** with **Pillow** (only needed to regenerate icons: `pip install Pillow`)
+
+### Step 0 — Install npm dependencies
+
+```bash
+cd native-app
+npm install
+```
+
 ### Step 1 — Build the Python sync binary
 
 The Python source is compiled into a self-contained executable with
 **PyInstaller**. This step only needs to be re-run when the Python source
 changes.
 
-**macOS / Linux:**
+**macOS:**
 ```bash
 bash native-app/build-scripts/build-python-mac.sh
+```
+
+**Linux:**
+```bash
+bash native-app/build-scripts/build-python-linux.sh
 ```
 
 **Windows (CMD or PowerShell):**
@@ -57,27 +75,43 @@ bash native-app/build-scripts/build-python-mac.sh
 native-app\build-scripts\build-python-win.bat
 ```
 
-Output: `native-app/python-bin/sync` (macOS) or `native-app/python-bin/sync.exe` (Windows).
+Output: `native-app/python-bin/sync` (macOS/Linux) or `native-app/python-bin/sync.exe` (Windows).
 
 ### Step 2 — Build the Electron installer
 
 ```bash
 cd native-app
 
-# macOS → dist/Troop Scout Stats-*.dmg
+# macOS → dist/Troop Scout Stats-<version>-mac-{x64,arm64}.dmg + .zip
 npm run build:mac
 
-# Windows → dist/Troop Scout Stats Setup *.exe
+# Windows → dist/Troop Scout Stats-<version>-win-x64.exe (installer + portable)
 npm run build:win
 
-# Both platforms (requires macOS for cross-compile or CI)
+# Linux → dist/Troop Scout Stats-<version>-linux-x64.AppImage + .deb
+npm run build:linux
+
+# All platforms (requires macOS host for mac builds, or CI)
 npm run build:all
 ```
 
 The installer bundles:
-- The Electron runtime (Chromium + Node.js, ~150 MB)
+- The Electron runtime (Chromium + Node.js)
 - The bundled Python sync binary (no Python install needed by end-users)
 - `dashboard.html` (the existing web dashboard, unchanged)
+
+### Regenerating the App Icon
+
+The app icon is an olive-green rounded square with a white fleur-de-lis.
+To regenerate icons after modifying the design:
+
+```bash
+cd native-app
+npm run generate-icons    # requires Python 3 + Pillow
+```
+
+This produces `build-resources/icon.{png,ico,icns}` and
+`build-resources/icons/{16..1024}x{16..1024}.png` for all platforms.
 
 ---
 
@@ -87,6 +121,8 @@ The installer bundles:
 native-app/
 ├── main.js               Electron main process
 │                         • Creates BrowserWindow
+│                         • Single-instance lock
+│                         • Content Security Policy
 │                         • Handles IPC: paths, file I/O, navigation, sync spawn
 ├── preload.js            contextBridge — exposes window.electronAPI to renderer
 │                         • Keeps renderer sandboxed (no direct Node.js access)
@@ -94,10 +130,18 @@ native-app/
 │   ├── launcher.html     Welcome / setup screen (initial view)
 │   ├── launcher.css      Launcher styles (Scout blue/gold theme)
 │   └── launcher.js       Launcher logic (auth form, CSV picker, progress log)
+├── build-resources/      Generated app icons (all platforms)
+│   ├── icon.png          1024x1024 master icon
+│   ├── icon.icns         macOS icon bundle
+│   ├── icon.ico          Windows icon bundle
+│   └── icons/            Linux PNG sizes (16-1024px)
+├── scripts/
+│   └── generate-icons.py Icon generator (Python + Pillow)
 ├── python-bridge/
 │   └── sync_runner.py    PyInstaller entry point
 ├── build-scripts/
 │   ├── build-python-mac.sh
+│   ├── build-python-linux.sh
 │   └── build-python-win.bat
 ├── sync-runner.spec      PyInstaller configuration
 └── package.json          Electron + electron-builder config
@@ -145,14 +189,15 @@ the native app and a plain browser:
 
 ---
 
-## Known Limitations (POC)
+## Known Limitations
 
 - **`sql.js` loaded from CDN** — the dashboard fetches the SQLite WASM binary
   from `cdnjs.cloudflare.com` at startup. A production build should vendor this
   file locally to support offline use.
 - **No auto-update** — a production app would use `electron-updater`.
 - **Code signing** — macOS and Windows installers require code signing
-  certificates for Gatekeeper / SmartScreen approval. The POC builds unsigned.
+  certificates for Gatekeeper / SmartScreen approval. Unsigned builds will
+  trigger security warnings on end-user machines.
 - **Single-arch builds** — the PyInstaller binary must be compiled on the
   target platform (or in CI). Universal macOS binaries require separate
   x64 + arm64 builds merged with `lipo`.
