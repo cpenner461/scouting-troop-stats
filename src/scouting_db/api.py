@@ -6,7 +6,7 @@ import urllib.error
 import urllib.parse
 
 BASE_URL = "https://api.scouting.org"
-AUTH_URL = "https://my.scouting.org/api/users/{username}/authenticate"
+AUTH_URL = "https://auth.scouting.org/api/users/{username}/authenticate"
 
 _CHROME_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "

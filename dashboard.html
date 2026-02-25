@@ -826,7 +826,7 @@
 <!-- ══════════ DB VIEW ══════════ -->
 <div class="view" id="view-db">
   <div class="db-view-content">
-    <div class="db-card">
+    <div class="db-card" id="db-load-card">
       <div class="db-card-icon">🗄️</div>
       <h2>Load Database</h2>
       <p>Open your <code>scouting_troop.db</code> file, or serve this page over HTTP to auto-load it from the same directory.</p>
@@ -3096,11 +3096,17 @@ function fmtDt(s) {
 // It auto-loads the synced database from the OS user-data directory and
 // wires up the "⇄ Sync" header button to return to the launcher screen.
 if (window.electronAPI) {
-  // Show the Sync button in the header
+  // Show the Sync button only in Electron, not in the native macOS app
   const syncBtn = document.getElementById('electron-sync-btn');
-  if (syncBtn) {
+  if (syncBtn && !window.electronAPI.isNativeApp) {
     syncBtn.style.display = '';
     syncBtn.addEventListener('click', () => window.electronAPI.navigate('launcher'));
+  }
+
+  // Hide the "Load Database" panel in the native macOS app (db is managed by the app)
+  if (window.electronAPI.isNativeApp) {
+    const loadCard = document.getElementById('db-load-card');
+    if (loadCard) loadCard.style.display = 'none';
   }
 
   // macOS fix: with titleBarStyle:'hiddenInset', the OS creates an implicit
