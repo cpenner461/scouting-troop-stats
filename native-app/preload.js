@@ -16,7 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppInfo: () => ipcRenderer.invoke('get-app-info'),
 
   // ── Paths ──────────────────────────────────────────────────────────────────
-  /** Returns { dbPath, configPath, userDataPath } */
+  /** Returns { dbPath, configPath, userDataPath, vendorPath } */
   getPaths: () => ipcRenderer.invoke('get-paths'),
 
   // ── File I/O ───────────────────────────────────────────────────────────────

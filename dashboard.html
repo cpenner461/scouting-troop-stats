@@ -965,7 +965,13 @@
 </div>
 
 <!-- ══════════ SCRIPTS ══════════ -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<script>
+// Load sql.js from CDN for standalone web use.
+// In Electron, sql.js is vendored locally and loaded via IPC in initSQL().
+if (!window.electronAPI) {
+  document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></' + 'script>');
+}
+</script>
 <script>
 'use strict';
 
@@ -1115,9 +1121,23 @@ document.addEventListener('keydown', function(e) {
 // ─── DB loading ──────────────────────────────────────────────────────────────
 async function initSQL() {
   if (SQL) return;
-  SQL = await initSqlJs({
-    locateFile: f => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/' + f
-  });
+  if (window.electronAPI) {
+    // Electron: load vendored sql.js entirely via IPC (no fetch/CDN needed).
+    const { vendorPath } = await window.electronAPI.getPaths();
+    if (typeof initSqlJs === 'undefined') {
+      const jsBuf = await window.electronAPI.readFile(vendorPath + '/sql-wasm.js');
+      const s = document.createElement('script');
+      s.textContent = new TextDecoder().decode(jsBuf);
+      document.head.appendChild(s);
+    }
+    const wasmBuf = await window.electronAPI.readFile(vendorPath + '/sql-wasm.wasm');
+    SQL = await initSqlJs({ wasmBinary: new Uint8Array(wasmBuf) });
+  } else {
+    // Standalone web: fetch WASM from CDN
+    SQL = await initSqlJs({
+      locateFile: f => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/' + f
+    });
+  }
 }
 
 async function loadDbBuffer(buf, filename) {
