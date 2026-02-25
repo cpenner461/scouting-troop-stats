@@ -12,6 +12,9 @@ dependencies = [
 scouting = "scouting_db.cli:main"
 scouting-mcp = "scouting_db.mcp_server:main"
 
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
