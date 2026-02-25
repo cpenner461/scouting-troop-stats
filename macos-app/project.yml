@@ -1,0 +1,39 @@
+name: ScoutingTroopStats
+
+options:
+  bundleIdPrefix: com.scoutingtroop
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "15"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+    ENABLE_HARDENED_RUNTIME: YES
+
+targets:
+  ScoutingTroopStats:
+    type: application
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources:
+      - path: ScoutingTroopStats
+        excludes:
+          - "**/*.plist"
+          - "**/*.entitlements"
+    resources:
+      - path: ../dashboard.html
+      - path: ../vendor/sql-wasm.js
+      - path: ../vendor/sql-wasm.wasm
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.scoutingtroop.ScoutingTroopStats
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_FILE: ScoutingTroopStats/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ScoutingTroopStats/ScoutingTroopStats.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_STYLE: Automatic
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
