@@ -97,7 +97,7 @@ function createWindow() {
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     title: 'Troop Scout Stats',
     show: false,
-    backgroundColor: '#003F87',
+    backgroundColor: '#4a5e28',
   };
 
   // Set window icon (Linux and Windows — macOS uses the .icns in the bundle)

@@ -3,16 +3,16 @@
 
 /* ── Design tokens ──────────────────────────────────────────────────────── */
 :root {
-  --blue:       #003F87;
-  --blue-dark:  #002A5C;
-  --blue-light: #1a5fb4;
+  --olive:      #4a5e28;
+  --olive-dark: #344219;
+  --olive-light:#5a7332;
   --gold:       #FDB927;
   --gold-dark:  #92400e;
   --green:      #00843D;
   --red:        #BF0000;
-  --bg:         #eef2f7;
+  --bg:         #e8ead8;
   --card:       #ffffff;
-  --border:     #e5e7eb;
+  --border:     #d4d8be;
   --muted:      #6b7280;
   --radius:     12px;
   --shadow:     0 2px 14px rgba(0, 0, 0, 0.10);
@@ -22,7 +22,7 @@
 html, body {
   height: 100%;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  background: linear-gradient(160deg, var(--blue-dark) 0%, var(--blue) 40%, #1d4e8f 100%);
+  background: linear-gradient(160deg, var(--olive-dark) 0%, var(--olive) 40%, #5a7332 100%);
   color: #111827;
   font-size: 14px;
   overflow-x: hidden;
@@ -38,7 +38,7 @@ html, body {
   top: 0;
   left: 0;
   z-index: 100;
-  /* transparent — the blue body bg shows through */
+  /* transparent — the olive body bg shows through */
 }
 
 /* ── Layout ─────────────────────────────────────────────────────────────── */
@@ -106,7 +106,7 @@ html, body {
 }
 
 .card-primary {
-  background: var(--blue);
+  background: var(--olive);
   color: white;
 }
 
@@ -132,7 +132,7 @@ html, body {
 
 .card code {
   background: #f3f4f6;
-  color: var(--blue);
+  color: var(--olive);
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 0.8rem;
@@ -169,9 +169,9 @@ html, body {
 .btn:active:not(:disabled) { filter: brightness(0.93); }
 .btn:disabled { opacity: 0.55; cursor: default; }
 
-.btn-primary  { background: var(--gold); color: var(--blue-dark); }
-.btn-secondary { background: var(--gold); color: var(--blue-dark); }
-.card-primary .btn-primary { background: white; color: var(--blue); }
+.btn-primary  { background: var(--gold); color: var(--olive-dark); }
+.btn-secondary { background: var(--gold); color: var(--olive-dark); }
+.card-primary .btn-primary { background: white; color: var(--olive); }
 
 .btn-sm {
   padding: 6px 12px;
@@ -199,7 +199,7 @@ html, body {
 .back-btn {
   background: none;
   border: none;
-  color: var(--blue);
+  color: var(--olive);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -259,7 +259,7 @@ html, body {
   font-family: inherit;
 }
 
-.form-group input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,63,135,0.1); }
+.form-group input:focus { border-color: var(--olive); box-shadow: 0 0 0 3px rgba(74,94,40,0.15); }
 .form-group input[readonly] { background: #f9fafb; color: var(--muted); cursor: default; }
 
 .file-row { display: flex; gap: 8px; align-items: stretch; }
@@ -303,7 +303,7 @@ html, body {
   width: 18px;
   height: 18px;
   border: 2.5px solid var(--border);
-  border-top-color: var(--blue);
+  border-top-color: var(--olive);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   flex-shrink: 0;
