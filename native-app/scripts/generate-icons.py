@@ -23,8 +23,8 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BUILD_RES = os.path.join(os.path.dirname(SCRIPT_DIR), "build-resources")
 ICONS_DIR = os.path.join(BUILD_RES, "icons")
 
-# Scout blue background (matches app theme --blue: #003F87)
-BG_COLOR = (0, 63, 135)
+# Olive-green background (matches app theme --olive: #4a5e28)
+BG_COLOR = (74, 94, 40)
 FG_COLOR = (255, 255, 255)  # white fleur-de-lis
 
 # Font that renders a proper heraldic fleur-de-lis for U+269C
