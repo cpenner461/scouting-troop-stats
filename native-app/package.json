@@ -39,7 +39,16 @@
       {
         "from": "app",
         "to": "app",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "vendor",
+        "to": "vendor",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "extraResources": [
@@ -122,5 +131,8 @@
       "title": "Troop Scout Stats",
       "icon": "build-resources/icon.icns"
     }
+  },
+  "dependencies": {
+    "sql.js": "^1.14.0"
   }
 }

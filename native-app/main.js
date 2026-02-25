@@ -127,7 +127,7 @@ app.on('ready', () => {
         ...details.responseHeaders,
         'Content-Security-Policy': [
           "default-src 'self';" +
-          " script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;" +
+          " script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval';" +
           " style-src 'self' 'unsafe-inline';" +
           " img-src 'self' data: blob:;" +
           " font-src 'self' data:;" +
@@ -170,6 +170,7 @@ ipcMain.handle('get-paths', () => ({
   dbPath: getDbPath(),
   configPath: getConfigPath(),
   userDataPath: app.getPath('userData'),
+  vendorPath: path.join(__dirname, 'vendor'),
 }));
 
 // ─── IPC: app info ────────────────────────────────────────────────────────────
