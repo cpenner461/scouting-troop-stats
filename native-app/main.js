@@ -1,11 +1,32 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, nativeImage, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 
 const isDev = process.env.NODE_ENV === 'development';
+
+// ─── Single instance lock ────────────────────────────────────────────────────
+// Prevent multiple copies of the app from running simultaneously.
+
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    // Someone tried to open a second instance — focus the existing window.
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
+// ─── App metadata ────────────────────────────────────────────────────────────
+
+app.setName('Troop Scout Stats');
 
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
@@ -37,12 +58,32 @@ function getPythonCmd() {
   return { cmd: 'uv', args: ['run', 'python', '-m', 'scouting_db.native_sync'], cwd: projectRoot };
 }
 
+/**
+ * Resolve the path to the app icon (used for About panel and window icon).
+ */
+function getIconPath() {
+  const ext = process.platform === 'win32' ? 'ico' : 'png';
+  // In packaged app, icons are in the build-resources dir which is relative to
+  // the app.asar. electron-builder copies them into the app directory.
+  const candidates = [
+    path.join(__dirname, 'build-resources', `icon.${ext}`),
+    path.join(__dirname, '..', 'build-resources', `icon.${ext}`),
+    path.join(process.resourcesPath || '', `icon.${ext}`),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
 // ─── Window management ────────────────────────────────────────────────────────
 
 let mainWindow = null;
 
 function createWindow() {
-  mainWindow = new BrowserWindow({
+  const iconPath = getIconPath();
+
+  const windowOpts = {
     width: 1280,
     height: 860,
     minWidth: 880,
@@ -51,12 +92,20 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: false,
     },
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     title: 'Troop Scout Stats',
     show: false,
     backgroundColor: '#003F87',
-  });
+  };
+
+  // Set window icon (Linux and Windows — macOS uses the .icns in the bundle)
+  if (iconPath && process.platform !== 'darwin') {
+    windowOpts.icon = nativeImage.createFromPath(iconPath);
+  }
+
+  mainWindow = new BrowserWindow(windowOpts);
 
   mainWindow.loadFile(path.join(__dirname, 'app', 'launcher.html'));
   mainWindow.once('ready-to-show', () => mainWindow.show());
@@ -67,6 +116,43 @@ function createWindow() {
 
   mainWindow.on('closed', () => { mainWindow = null; });
 }
+
+// ─── Content Security Policy ─────────────────────────────────────────────────
+// Set a restrictive CSP for all pages loaded in the app.
+
+app.on('ready', () => {
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'self';" +
+          " script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;" +
+          " style-src 'self' 'unsafe-inline';" +
+          " img-src 'self' data: blob:;" +
+          " font-src 'self' data:;" +
+          " connect-src 'self';" +
+          " object-src 'none';" +
+          " base-uri 'self';"
+        ],
+      },
+    });
+  });
+});
+
+// ─── macOS About panel ───────────────────────────────────────────────────────
+
+if (process.platform === 'darwin') {
+  app.setAboutPanelOptions({
+    applicationName: 'Troop Scout Stats',
+    applicationVersion: app.getVersion(),
+    version: '', // hides the build number row
+    copyright: 'Copyright \u00A9 2025 Troop Scout Stats',
+    iconPath: getIconPath(),
+  });
+}
+
+// ─── App lifecycle ───────────────────────────────────────────────────────────
 
 app.whenReady().then(createWindow);
 
@@ -84,6 +170,14 @@ ipcMain.handle('get-paths', () => ({
   dbPath: getDbPath(),
   configPath: getConfigPath(),
   userDataPath: app.getPath('userData'),
+}));
+
+// ─── IPC: app info ────────────────────────────────────────────────────────────
+
+ipcMain.handle('get-app-info', () => ({
+  version: app.getVersion(),
+  name: app.getName(),
+  platform: process.platform,
 }));
 
 // ─── IPC: file I/O ────────────────────────────────────────────────────────────
@@ -131,7 +225,7 @@ ipcMain.handle('navigate', async (_event, page) => {
  * Spawn the Python sync process and stream progress back to the renderer.
  *
  * The Python script emits JSON-newline messages to stdout:
- *   {"type": "step",     "message": "Authenticating…"}
+ *   {"type": "step",     "message": "Authenticating\u2026"}
  *   {"type": "log",      "message": "  [1/23] John Smith"}
  *   {"type": "error",    "message": "Authentication failed"}
  *   {"type": "complete", "db_path": "/path/to/scouting_troop.db"}

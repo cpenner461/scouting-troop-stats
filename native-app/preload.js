@@ -11,6 +11,10 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  // ── App info ─────────────────────────────────────────────────────────────
+  /** Returns { version, name, platform } */
+  getAppInfo: () => ipcRenderer.invoke('get-app-info'),
+
   // ── Paths ──────────────────────────────────────────────────────────────────
   /** Returns { dbPath, configPath, userDataPath } */
   getPaths: () => ipcRenderer.invoke('get-paths'),
