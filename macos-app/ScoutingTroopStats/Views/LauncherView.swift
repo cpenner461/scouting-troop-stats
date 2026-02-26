@@ -14,7 +14,6 @@ struct LauncherView: View {
     @State private var troopName        = "My Troop"
     @State private var csvURL: URL?     = nil
     @State private var showCSVPicker    = false
-    @State private var showDBPicker     = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,16 +35,6 @@ struct LauncherView: View {
             }
         }
         .background(bgColor.ignoresSafeArea())
-        .fileImporter(
-            isPresented: $showDBPicker,
-            allowedContentTypes: [UTType(filenameExtension: "db") ?? .data],
-            allowsMultipleSelection: false
-        ) { result in
-            if case .success(let urls) = result, let url = urls.first {
-                appState.dbPath = url.path
-                appState.showDashboard = true
-            }
-        }
         .fileImporter(
             isPresented: $showCSVPicker,
             allowedContentTypes: [.commaSeparatedText],
@@ -81,7 +70,7 @@ struct LauncherView: View {
                 title: "Open Database",
                 description: "Load an existing scouting_troop.db file"
             ) {
-                showDBPicker = true
+                openDatabase()
             }
             ActionCard(
                 icon: "arrow.down.circle.fill",
@@ -153,6 +142,26 @@ struct LauncherView: View {
             .shadow(color: .black.opacity(0.07), radius: 12, x: 0, y: 4)
             .padding(.horizontal, 60)
         }
+    }
+
+    // MARK: - Open database
+
+    /// Uses NSOpenPanel directly — SwiftUI's fileImporter is unreliable on macOS
+    /// in views that aren't inside a NavigationStack.
+    private func openDatabase() {
+        let panel = NSOpenPanel()
+        panel.title = "Open Scouting Database"
+        panel.message = "Select a scouting_troop.db file"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [
+            UTType(filenameExtension: "db") ?? .database,
+            .database,
+        ]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        appState.dbPath = url.path
+        appState.showDashboard = true
     }
 
     // MARK: - Sync trigger

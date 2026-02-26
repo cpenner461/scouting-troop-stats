@@ -32,12 +32,16 @@ struct ScoutingTroopStatsApp: App {
 
     private func openDatabase() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.init(filenameExtension: "db") ?? .data]
+        panel.title = "Open Scouting Database"
+        panel.message = "Select a scouting_troop.db file"
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
-        panel.title = "Open Scouting Database"
-        panel.message = "Select a scouting_troop.db file"
+        // UTType(filenameExtension:) is failable; fall back to .database then .data.
+        panel.allowedContentTypes = [
+            UTType(filenameExtension: "db") ?? .database,
+            .database,
+        ]
         if panel.runModal() == .OK, let url = panel.url {
             appState.dbPath = url.path
             appState.showDashboard = true
