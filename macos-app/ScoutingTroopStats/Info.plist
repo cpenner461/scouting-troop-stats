@@ -24,6 +24,8 @@
     <string>Copyright © 2024. All rights reserved.</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
+    <key>ScoutingSourceRoot</key>
+    <string>$(SCOUTING_SOURCE_ROOT)</string>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSExceptionDomains</key>

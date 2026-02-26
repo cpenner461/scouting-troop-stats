@@ -12,6 +12,7 @@ settings:
     SWIFT_VERSION: "5.9"
     MACOSX_DEPLOYMENT_TARGET: "13.0"
     ENABLE_HARDENED_RUNTIME: YES
+    SCOUTING_SOURCE_ROOT: $(SRCROOT)/..
 
 targets:
   ScoutingTroopStats:
