@@ -55,7 +55,13 @@ actor ScoutingAPIService {
         req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         req.setValue("application/json; version=2", forHTTPHeaderField: "Accept")
         req.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
-        let bodyStr = "password=\(password.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+        // .urlQueryAllowed does not encode '=' or '&', so a password containing
+        // those characters would break the form body (the server sees extra keys).
+        // Strip them so the value is safely percent-encoded.
+        var formValueChars = CharacterSet.urlQueryAllowed
+        formValueChars.remove(charactersIn: "=&#")
+        let encodedPassword = password.addingPercentEncoding(withAllowedCharacters: formValueChars) ?? ""
+        let bodyStr = "password=\(encodedPassword)"
         req.httpBody = bodyStr.data(using: .utf8)
 
         let data = try await perform(req)
