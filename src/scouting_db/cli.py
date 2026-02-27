@@ -553,12 +553,12 @@ def cmd_query(args):
     elif args.query_name == "plan":
         rows = optimal_group_activities(conn, args.min_pct)
         if not rows:
-            print(f"No activities found where >= {args.min_pct}% of troop benefits.")
+            print(f"No activities found where >= {args.min_pct}% of scouts are in progress.")
             print("Try a lower --min-pct or run sync-scouts to populate data.")
             conn.close()
             return
-        print(f"\nOptimal Group Activities (>= {args.min_pct}% of troop benefits):\n")
-        print(f"  {'Activity':<40} {'Eagle':<6} {'Benefit':<8} {'%':>6}")
+        print(f"\nIn-Progress Badge Activities (>= {args.min_pct}% of scouts in progress):\n")
+        print(f"  {'Activity':<40} {'Eagle':<6} {'In Prog':<8} {'%':>6}")
         print(f"  {'-'*40} {'-'*5} {'-'*7} {'-'*6}")
         for r in rows:
             eagle = " *" if r["is_eagle_required"] else ""
@@ -652,7 +652,7 @@ def main():
     )
     p_query.add_argument("--limit", type=int, default=20)
     p_query.add_argument("--rank-id", type=int)
-    p_query.add_argument("--min-pct", type=float, default=50.0)
+    p_query.add_argument("--min-pct", type=float, default=20.0)
     p_query.add_argument(
         "--eagle-only", action="store_true",
         help="Only show Eagle-required merit badges (for needs-mb)",

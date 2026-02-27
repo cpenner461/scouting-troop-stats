@@ -449,7 +449,9 @@ class TestOptimalGroupActivities:
         _add_scout(conn, "U1", "Alice", "S")
         _add_scout(conn, "U2", "Bob", "S")
         _add_mb(conn, "NewEagleMB", is_eagle=1)
-        # Neither scout has it → 100% need it
+        # Both scouts are in progress → 100% in progress
+        _add_scout_mb(conn, "U1", "NewEagleMB", status="in_progress")
+        _add_scout_mb(conn, "U2", "NewEagleMB", status="in_progress")
 
         rows = optimal_group_activities(conn, min_pct=50.0)
         names = [r["activity_name"] for r in rows]
@@ -459,17 +461,29 @@ class TestOptimalGroupActivities:
         _add_scout(conn, "U1", "Alice", "S")
         _add_scout(conn, "U2", "Bob", "S")
         _add_mb(conn, "RareMB")
-        # Only U1 needs it (U2 completed it) → 50% need it
-        _add_scout_mb(conn, "U2", "RareMB", status="completed")
+        # Only U1 is in progress → 50% in progress, below 75% threshold
+        _add_scout_mb(conn, "U1", "RareMB", status="in_progress")
 
         rows = optimal_group_activities(conn, min_pct=75.0)
         names = [r["activity_name"] for r in rows]
         assert "RareMB" not in names
 
+    def test_excludes_completed_mbs(self, conn):
+        _add_scout(conn, "U1", "Alice", "S")
+        _add_mb(conn, "DoneMB")
+        # Completed badges don't count — only in_progress does
+        _add_scout_mb(conn, "U1", "DoneMB", status="completed")
+
+        rows = optimal_group_activities(conn, min_pct=0.0)
+        names = [r["activity_name"] for r in rows]
+        assert "DoneMB" not in names
+
     def test_eagle_mbs_ordered_before_non_eagle(self, conn):
         _add_scout(conn, "U1", "Alice", "S")
         _add_mb(conn, "EagleMB", is_eagle=1)
         _add_mb(conn, "RegularMB", is_eagle=0)
+        _add_scout_mb(conn, "U1", "EagleMB", status="in_progress")
+        _add_scout_mb(conn, "U1", "RegularMB", status="in_progress")
 
         rows = optimal_group_activities(conn, min_pct=0.0)
         eagle_indices = [i for i, r in enumerate(rows) if r["is_eagle_required"] == 1]
@@ -477,15 +491,18 @@ class TestOptimalGroupActivities:
         if eagle_indices and regular_indices:
             assert max(eagle_indices) < min(regular_indices)
 
-    def test_pct_benefiting_is_100_when_all_scouts_need_it(self, conn):
+    def test_pct_benefiting_reflects_in_progress_count(self, conn):
         _add_scout(conn, "U1", "Alice", "S")
         _add_scout(conn, "U2", "Bob", "S")
-        _add_mb(conn, "UniversalMB")
+        _add_mb(conn, "ActiveMB")
+        # Only U1 in progress → 50%, not 100%
+        _add_scout_mb(conn, "U1", "ActiveMB", status="in_progress")
 
         rows = optimal_group_activities(conn, min_pct=0.0)
-        row = next((r for r in rows if r["activity_name"] == "UniversalMB"), None)
+        row = next((r for r in rows if r["activity_name"] == "ActiveMB"), None)
         assert row is not None
-        assert row["pct_benefiting"] == 100.0
+        assert row["scouts_benefiting"] == 1
+        assert row["pct_benefiting"] == 50.0
 
     def test_empty_when_no_scouts(self, conn):
         rows = optimal_group_activities(conn)
@@ -494,6 +511,7 @@ class TestOptimalGroupActivities:
     def test_returns_expected_columns(self, conn):
         _add_scout(conn, "U1", "Alice", "S")
         _add_mb(conn, "TestMB")
+        _add_scout_mb(conn, "U1", "TestMB", status="in_progress")
 
         rows = optimal_group_activities(conn, min_pct=0.0)
         assert len(rows) > 0
@@ -501,14 +519,13 @@ class TestOptimalGroupActivities:
         for col in ("activity_name", "is_eagle_required", "scouts_benefiting", "total_scouts", "pct_benefiting"):
             assert col in keys
 
-    def test_default_threshold_is_50_pct(self, conn):
+    def test_default_threshold_is_20_pct(self, conn):
         _add_scout(conn, "U1", "Alice", "S")
         _add_scout(conn, "U2", "Bob", "S")
         _add_mb(conn, "HalfNeededMB")
-        # U1 completed it, U2 needs it → 50% need it
-        _add_scout_mb(conn, "U1", "HalfNeededMB", status="completed")
+        # U1 in progress → 50% in progress, above default 20% threshold
+        _add_scout_mb(conn, "U1", "HalfNeededMB", status="in_progress")
 
         rows_default = optimal_group_activities(conn)
         names = [r["activity_name"] for r in rows_default]
-        # At exactly 50% threshold with default min_pct=50.0, it should be included
         assert "HalfNeededMB" in names

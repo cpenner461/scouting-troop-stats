@@ -949,7 +949,7 @@
 
 <!-- ══════════ TROOP MB PARTICIPATION MODAL ══════════ -->
 <div id="troop-mb-modal" class="mb-modal-overlay" onclick="if(event.target===this)closeTroopMBModal()">
-  <div class="mb-modal">
+  <div class="mb-modal" style="max-width:820px">
     <div class="mb-modal-header">
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px">
@@ -1744,14 +1744,12 @@ function loadTroopView() {
 
   const activityPlanner = q(`
     SELECT mb.name AS activity_name, mb.is_eagle_required,
-      COUNT(s.user_id) AS scouts_benefiting,
-      ROUND(COUNT(s.user_id)*100.0/MAX(?,1),1) AS pct_benefiting
+      COUNT(smb.scout_user_id) AS scouts_benefiting,
+      ROUND(COUNT(smb.scout_user_id)*100.0/MAX(?,1),1) AS pct_benefiting
     FROM merit_badges mb
-    CROSS JOIN scouts s
-    LEFT JOIN scout_merit_badges smb
-      ON smb.scout_user_id=s.user_id AND smb.merit_badge_name=mb.name AND smb.status='completed'
-    WHERE smb.id IS NULL AND mb.active=1
-    GROUP BY mb.name HAVING pct_benefiting >= 40
+    JOIN scout_merit_badges smb ON smb.merit_badge_name=mb.name AND smb.status='in_progress'
+    WHERE mb.active=1
+    GROUP BY mb.name HAVING pct_benefiting >= 20
     ORDER BY mb.is_eagle_required DESC, pct_benefiting DESC LIMIT 20`, [n]);
 
   const rosterPatrolSel = hasPatrolCol ? 'COALESCE(s.patrol,NULL) AS patrol,' : 'NULL AS patrol,';
@@ -1812,19 +1810,10 @@ function loadTroopView() {
 
   // Activity planner: for choice-group badges replace the raw "doesn't have badge X"
   // count with the true "group slot not yet filled" count, then re-filter and re-sort.
+  // Sort and deduplicate: for choice-group badges, keep only the one with the most
+  // scouts in progress within each group (the SQL count is already correct).
   const activityPlannerAdj = activityPlanner
-    .map(a => {
-      const gi = choiceBadgeGroupIdx[a.activity_name];
-      if (gi !== undefined) {
-        const trueBenefiting = groupUnsatisfied[gi];
-        return { ...a, scouts_benefiting: trueBenefiting,
-                 pct_benefiting: Math.round(trueBenefiting * 100 / Math.max(n, 1)) };
-      }
-      return a;
-    })
-    .filter(a => a.pct_benefiting >= 40)
     .sort((a, b) => b.is_eagle_required - a.is_eagle_required || b.pct_benefiting - a.pct_benefiting)
-    // Deduplicate choice groups: keep only the badge with the highest pct within each group
     .filter((a, _, arr) => {
       const gi = choiceBadgeGroupIdx[a.activity_name];
       if (gi === undefined) return true;
@@ -1998,13 +1987,13 @@ function loadTroopView() {
         <div class="panel-header">
           <span class="panel-icon">📅</span>
           <h2>Group Activity Planner</h2>
-          <span class="panel-sub" style="font-size:0.72rem;color:var(--muted);margin-left:auto">★ = Eagle-required · ≥ 40% of troop benefits</span>
+          <span class="panel-sub" style="font-size:0.72rem;color:var(--muted);margin-left:auto">★ = Eagle-required · ≥ 20% of scouts in progress</span>
         </div>
         <div class="panel-body no-pad">
           ${activityPlannerAdj.length > 0
             ? `<div class="tbl-wrap">
                 <table class="sortable">
-                  <thead><tr><th>Merit Badge Activity</th><th style="text-align:right">Scouts Benefit</th><th class="hide-sm">Troop %</th></tr></thead>
+                  <thead><tr><th>Merit Badge Activity</th><th style="text-align:right">In Progress</th><th class="hide-sm">Troop %</th></tr></thead>
                   <tbody>
                     ${activityPlannerAdj.map(a => `
                       <tr>
@@ -2025,7 +2014,7 @@ function loadTroopView() {
                   </tbody>
                 </table>
               </div>`
-            : `<div class="no-data">No activities meet the 40% threshold — try running <code>scouting query plan --min-pct 30</code></div>`}
+            : `<div class="no-data">No activities meet the 20% threshold — try running <code>scouting query plan --min-pct 10</code></div>`}
         </div>
       </div>
 
@@ -2337,8 +2326,8 @@ function closeMBModal() {
 function showTroopMBDetail(mbName) {
   if (!db) return;
 
-  const mbInfo  = q1(`SELECT is_eagle_required FROM merit_badges WHERE name = ?`, [mbName]);
-  const scouts  = q(`
+  const mbInfo = q1(`SELECT is_eagle_required FROM merit_badges WHERE name = ?`, [mbName]);
+  const scouts = q(`
     SELECT
       TRIM(COALESCE(s.first_name,'') || ' ' || COALESCE(s.last_name,'')) AS scout_name,
       s.user_id, smb.status, smb.date_started, smb.date_completed
@@ -2348,6 +2337,30 @@ function showTroopMBDetail(mbName) {
     ORDER BY
       CASE smb.status WHEN 'in_progress' THEN 0 WHEN 'completed' THEN 1 ELSE 2 END,
       s.last_name, s.first_name`, [mbName]);
+
+  const reqs = q(`
+    WITH in_progress AS (
+      SELECT scout_user_id, mb_api_id
+      FROM scout_merit_badges
+      WHERE merit_badge_name = ? AND status = 'in_progress'
+    )
+    SELECT
+      mr.requirement_number,
+      mr.name AS requirement_desc,
+      (SELECT COUNT(*) FROM in_progress) AS scouts_working,
+      COUNT(CASE WHEN smrc.completed = 1 THEN 1 END) AS scouts_done,
+      (SELECT COUNT(*) FROM in_progress)
+        - COUNT(CASE WHEN smrc.completed = 1 THEN 1 END) AS scouts_needing,
+      ROUND(COUNT(CASE WHEN smrc.completed = 1 THEN 1 END) * 100.0
+        / MAX((SELECT COUNT(*) FROM in_progress), 1), 1) AS pct_complete
+    FROM mb_requirements mr
+    LEFT JOIN scout_mb_requirement_completions smrc
+      ON smrc.mb_requirement_id = mr.id
+      AND smrc.scout_user_id IN (SELECT scout_user_id FROM in_progress)
+    WHERE mr.parent_requirement_id IS NULL
+      AND mr.mb_api_id IN (SELECT mb_api_id FROM in_progress WHERE mb_api_id IS NOT NULL)
+    GROUP BY mr.id
+    ORDER BY mr.sort_order, mr.requirement_number`, [mbName]);
 
   document.getElementById('troop-mb-modal-title').textContent = mbName;
 
@@ -2359,7 +2372,7 @@ function showTroopMBDetail(mbName) {
     `${scouts.length} Scout${scouts.length !== 1 ? 's' : ''} participated · ` +
     `<strong>${completed}</strong> completed · <strong>${inProg}</strong> in progress${eagleTag}`;
 
-  document.getElementById('troop-mb-modal-body').innerHTML = scouts.length === 0
+  const scoutTable = scouts.length === 0
     ? '<div class="no-data">No Scouts have started this merit badge.</div>'
     : `<table class="sortable" style="margin-top:4px">
         <thead><tr><th>Scout</th><th>Status</th><th>Started</th><th>Completed</th></tr></thead>
@@ -2374,6 +2387,44 @@ function showTroopMBDetail(mbName) {
         </tbody>
       </table>`;
 
+  const reqSection = reqs.length === 0
+    ? (inProg > 0 ? `<div style="margin-top:20px;border-top:1px solid var(--border);padding-top:14px"><div class="no-data" style="margin:0">Requirement details not available — run <code>scouting sync-scouts</code> to populate.</div></div>` : '')
+    : `
+    <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:14px">
+      <div style="font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">
+        Requirements — among ${inProg} in-progress scout${inProg !== 1 ? 's' : ''}
+      </div>
+      <table class="sortable" style="margin-top:4px">
+        <thead>
+          <tr>
+            <th style="width:2.5rem">#</th>
+            <th style="max-width:220px">Requirement</th>
+            <th style="text-align:right" title="Scouts who have completed this requirement">Done</th>
+            <th style="text-align:right" title="In-progress scouts who still need this requirement">Needed</th>
+            <th class="hide-sm">Progress</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${reqs.map(r => `
+            <tr>
+              <td style="color:var(--muted);white-space:nowrap">${esc(r.requirement_number || '')}</td>
+              <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.requirement_desc || '')}">${esc(r.requirement_desc || '')}</td>
+              <td style="text-align:right">${r.scouts_done}</td>
+              <td style="text-align:right">${r.scouts_needing > 0 ? `<strong>${r.scouts_needing}</strong>` : '—'}</td>
+              <td class="bar-cell">
+                <div class="bar-wrap">
+                  <div class="mini-bar">
+                    <div class="mini-fill ${r.pct_complete >= 100 ? 'gold' : ''}" style="width:${r.pct_complete}%"></div>
+                  </div>
+                  <span class="bar-pct">${r.pct_complete}%</span>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+  document.getElementById('troop-mb-modal-body').innerHTML = scoutTable + reqSection;
   document.getElementById('troop-mb-modal').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
