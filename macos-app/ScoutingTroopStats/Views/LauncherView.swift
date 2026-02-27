@@ -171,6 +171,10 @@ struct LauncherView: View {
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first?
             .appendingPathComponent("ScoutingTroopStats", isDirectory: true)
+        if let supportDir {
+            try? FileManager.default.createDirectory(at: supportDir,
+                                                     withIntermediateDirectories: true)
+        }
         let dbURL = supportDir?.appendingPathComponent("scouting_troop.db")
             ?? URL(fileURLWithPath: "/tmp/scouting_troop.db")
 

@@ -33,9 +33,11 @@ class AppState: ObservableObject {
     }
 
     func finishSync(success: Bool) {
-        isSyncing = false
         if success {
+            isSyncing = false
             showDashboard = true
         }
+        // On failure: leave isSyncing = true so SyncProgressView stays visible
+        // with the error messages. The user dismisses it via the "Back" button.
     }
 }
