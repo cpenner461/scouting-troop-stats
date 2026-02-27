@@ -198,29 +198,26 @@ def mb_requirement_detail(conn, merit_badge_name=None):
     ).fetchall()
 
 
-def optimal_group_activities(conn, min_pct=50.0):
-    """Activities where >= min_pct% of the troop would benefit.
+def optimal_group_activities(conn, min_pct=20.0):
+    """Activities where >= min_pct% of the troop is actively in progress.
 
-    This is the key query for planning troop meetings: which Eagle-required
-    merit badges does the largest fraction of the troop still need?
+    This is the key query for planning troop meetings: which merit badges
+    does the largest number of scouts currently have in progress?
     """
     return conn.execute(
         """
         SELECT
             mb.name AS activity_name,
             mb.is_eagle_required,
-            COUNT(s.user_id) AS scouts_benefiting,
+            COUNT(smb.scout_user_id) AS scouts_benefiting,
             (SELECT COUNT(*) FROM scouts) AS total_scouts,
-            ROUND(COUNT(s.user_id) * 100.0
+            ROUND(COUNT(smb.scout_user_id) * 100.0
                   / MAX((SELECT COUNT(*) FROM scouts), 1), 1) AS pct_benefiting
         FROM merit_badges mb
-        CROSS JOIN scouts s
-        LEFT JOIN scout_merit_badges smb
-            ON smb.scout_user_id = s.user_id
-            AND smb.merit_badge_name = mb.name
-            AND smb.status = 'completed'
-        WHERE smb.id IS NULL
-          AND mb.active = 1
+        JOIN scout_merit_badges smb
+            ON smb.merit_badge_name = mb.name
+            AND smb.status = 'in_progress'
+        WHERE mb.active = 1
         GROUP BY mb.name
         HAVING pct_benefiting >= ?
         ORDER BY mb.is_eagle_required DESC, pct_benefiting DESC
