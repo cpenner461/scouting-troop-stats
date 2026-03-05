@@ -93,9 +93,9 @@ final class ScoutingURLSchemeHandler: NSObject, WKURLSchemeHandler {
             // Try repo root (for dashboard.html)
             let direct = rootURL.appendingPathComponent("\(name).\(ext)")
             if let data = try? Data(contentsOf: direct) { return data }
-            // Try vendor sub-directory (for sql-wasm.js / sql-wasm.wasm)
-            let vendor = rootURL.appendingPathComponent("vendor/\(name).\(ext)")
-            if let data = try? Data(contentsOf: vendor) { return data }
+            // Try macos-app resources (for sql-wasm.js / sql-wasm.wasm)
+            let resources = rootURL.appendingPathComponent("macos-app/ScoutingTroopStats/Resources/vendor/\(name).\(ext)")
+            if let data = try? Data(contentsOf: resources) { return data }
         }
 
         return nil

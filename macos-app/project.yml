@@ -24,10 +24,16 @@ targets:
         excludes:
           - "**/*.plist"
           - "**/*.entitlements"
-    resources:
+          - "Resources/**"
+      - path: ScoutingTroopStats/Assets.xcassets
+        buildPhase: resources
       - path: ../dashboard.html
-      - path: ../vendor/sql-wasm.js
-      - path: ../vendor/sql-wasm.wasm
+        buildPhase: resources
+      - path: ScoutingTroopStats/Resources/vendor/sql-wasm.js
+        buildPhase: resources
+      - path: ScoutingTroopStats/Resources/vendor/sql-wasm.wasm
+        buildPhase: resources
+        type: file
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.scoutingtroop.ScoutingTroopStats
@@ -38,3 +44,4 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_STYLE: Automatic
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        PRODUCT_NAME: Scouting Stats

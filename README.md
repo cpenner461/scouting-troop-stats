@@ -44,6 +44,19 @@ python -m http.server 8000
 # then open http://localhost:8000/dashboard.html in your browser
 ```
 
+## macOS App
+
+A native macOS app is available — a lightweight SwiftUI wrapper around the same dashboard, with built-in sync. No Electron, no Python runtime, just a ~10 MB `.app` that runs on macOS 13+.
+
+```bash
+# Build and create a DMG (requires Xcode 15+ and xcodegen)
+brew install xcodegen
+cd macos-app
+make dmg
+```
+
+The DMG is created at `macos-app/build/Scouting Stats.dmg`. See [`macos-app/README.md`](macos-app/README.md) for full build options including signed distribution.
+
 ## Dashboard
 
 `dashboard.html` is an interactive browser UI that reads your `scouting_troop.db` directly — no extra server or build step required. It's the primary way to explore your troop's data visually.
@@ -423,6 +436,10 @@ scouting-troop-stats/
     db.py                     # SQLite schema, init, upsert functions
     queries.py                # Troop-wide analytical SQL queries
     mcp_server.py             # MCP server exposing the database to AI assistants
+  macos-app/                  # Native macOS app (SwiftUI + WKWebView)
+    project.yml               # XcodeGen spec — `xcodegen generate` creates the Xcode project
+    Makefile                  # `make dmg` builds a distributable DMG
+  native-app/                 # Electron desktop app (cross-platform)
 ```
 
 Dependencies: `mcp[cli]` (for the MCP server). The CLI itself uses only the Python standard library (`urllib`, `sqlite3`, `csv`, `json`, `argparse`).

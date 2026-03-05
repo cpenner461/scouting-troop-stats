@@ -14,3 +14,7 @@ native-app/dist/
 native-app/out/
 native-app/.webpack/
 native-app/.vite/
+
+# macOS native app
+macos-app/build/
+macos-app/ScoutingTroopStats.xcodeproj/
