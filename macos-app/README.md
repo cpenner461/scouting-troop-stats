@@ -55,8 +55,9 @@ No Electron, no bundled runtime — just Swift and WebKit.
   is re-implemented in Swift using `URLSession` and the `sqlite3` C library that ships with
   macOS.  The resulting binary has zero non-system dependencies.
 
-* **Shared dashboard** — `dashboard.html` and `vendor/sql-wasm.*` in the repository root are
-  referenced directly by the Xcode project as bundle resources; no duplication needed.
+* **Self-contained resources** — `dashboard.html` is referenced from the repository root,
+  and the sql.js WASM files live in `ScoutingTroopStats/Resources/vendor/` within the macOS
+  app directory.  XcodeGen bundles all three automatically — no manual build-phase setup.
 
 ---
 
@@ -67,44 +68,77 @@ No Electron, no bundled runtime — just Swift and WebKit.
 | Xcode | 15.0+ |
 | macOS SDK | 13.0+ |
 | macOS (run) | 13.0 Ventura+ |
-| [XcodeGen](https://github.com/yonaskolb/XcodeGen) | 2.40+ (optional, for project generation) |
+| [XcodeGen](https://github.com/yonaskolb/XcodeGen) | 2.40+ |
+| [uv](https://docs.astral.sh/uv/) | 0.4+ |
+
+Install dependencies once:
+
+```bash
+brew install xcodegen
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Python packages (Pillow, dmgbuild) are managed automatically by `uv` at build time — no manual `pip install` needed.
 
 ---
 
 ## Building
 
-### Option A — Generate with XcodeGen (recommended)
+### Quick build (Xcode)
 
 ```bash
-# Install XcodeGen once
-brew install xcodegen
-
-# From the macos-app directory:
 cd macos-app
 xcodegen generate
-
-# Open the generated project
 open ScoutingTroopStats.xcodeproj
 ```
 
-Then in Xcode: **Product → Run** (⌘R) or **Product → Archive** for a distributable build.
+Then **Product → Run** (⌘R).
 
-### Option B — Create the Xcode project manually
+### Build a DMG for distribution
 
-1. Open Xcode → **File → New → Project → macOS → App**
-2. Set:
-   - Product Name: `ScoutingTroopStats`
-   - Bundle ID: `com.scoutingtroop.ScoutingTroopStats`
-   - Language: Swift, Interface: SwiftUI
-   - Deployment target: macOS 13.0
-3. Delete the auto-generated `ContentView.swift` and `ScoutingTroopStatsApp.swift`
-4. Drag all `.swift` files from this directory into the project
-5. Add bundle resources:
-   - `../dashboard.html` → copy to bundle
-   - `../vendor/sql-wasm.js` → copy to bundle
-   - `../vendor/sql-wasm.wasm` → copy to bundle
-6. Replace `Info.plist` with the one in this directory
-7. Set the entitlements file in Build Settings → `CODE_SIGN_ENTITLEMENTS`
+The included Makefile automates project generation, building, and DMG creation:
+
+```bash
+cd macos-app
+make dmg
+```
+
+This will:
+1. Run `xcodegen generate` to create the Xcode project
+2. Build a Release configuration
+3. Package the `.app` into a styled DMG at `build/Scouting Stats.dmg` with a background image, positioned icons, and an Applications shortcut for drag-to-install
+
+### Other Makefile targets
+
+| Target | Description |
+|--------|-------------|
+| `make generate` | Generate the Xcode project from `project.yml` |
+| `make build` | Build in Release mode |
+| `make app` | Build and copy the `.app` to `build/export/` |
+| `make dmg` | Build and create a styled drag-to-install DMG |
+| `make dmg-background` | Regenerate the DMG background image |
+| `make archive` | Create an Xcode archive (for notarization/signing) |
+| `make export` | Archive + export with Developer ID signing |
+| `make clean` | Remove all build artifacts and the generated Xcode project |
+
+### Signed distribution
+
+For notarized distribution outside the App Store:
+
+```bash
+# Archive and export with Developer ID
+make export
+
+# Notarize the DMG (requires Apple Developer account)
+xcrun notarytool submit "build/Scouting Stats.dmg" \
+    --apple-id "you@example.com" \
+    --team-id "XXXXXXXXXX" \
+    --password "@keychain:AC_PASSWORD" \
+    --wait
+
+# Staple the notarization ticket
+xcrun stapler staple "build/Scouting Stats.dmg"
+```
 
 ---
 
@@ -113,11 +147,24 @@ Then in Xcode: **Product → Run** (⌘R) or **Product → Archive** for a distr
 ```
 macos-app/
 ├── project.yml                         XcodeGen spec
+├── Makefile                            Build automation (DMG, archive, etc.)
+├── ExportOptions.plist                 Archive export config
+├── scripts/
+│   ├── generate-dmg-background.py      Generates the DMG installer background image
+│   └── dmgbuild-settings.py            Configuration for dmgbuild (icon layout, background)
+├── dmg-resources/
+│   ├── background.png                  DMG background (660×400 @1x)
+│   └── background@2x.png              DMG background (1320×800 @2x retina)
 ├── ScoutingTroopStats/
 │   ├── ScoutingTroopStatsApp.swift     @main entry point
 │   ├── AppState.swift                  Shared ObservableObject state
 │   ├── Info.plist
 │   ├── ScoutingTroopStats.entitlements
+│   ├── Assets.xcassets/                App icon (fleur-de-lis)
+│   ├── Resources/
+│   │   └── vendor/
+│   │       ├── sql-wasm.js             sql.js loader
+│   │       └── sql-wasm.wasm           SQLite WASM binary
 │   ├── Views/
 │   │   ├── ContentView.swift           Root view — switches between screens
 │   │   ├── LauncherView.swift          Welcome screen (open DB / sign in & sync)
@@ -131,11 +178,11 @@ macos-app/
 └── README.md
 ```
 
-Bundle resources (referenced from repo root, not duplicated):
+Bundle resources:
 ```
-../dashboard.html          → scouting://localhost/dashboard.html
-../vendor/sql-wasm.js      → scouting://localhost/vendor/sql-wasm.js
-../vendor/sql-wasm.wasm    → scouting://localhost/vendor/sql-wasm.wasm
+../dashboard.html                              → scouting://localhost/dashboard.html
+ScoutingTroopStats/Resources/vendor/sql-wasm.js   → scouting://localhost/vendor/sql-wasm.js
+ScoutingTroopStats/Resources/vendor/sql-wasm.wasm → scouting://localhost/vendor/sql-wasm.wasm
 ```
 
 ---
@@ -172,18 +219,3 @@ The app runs in the macOS sandbox with these entitlements:
 | `network.client` | HTTPS calls to api.scouting.org and my.scouting.org |
 | `files.user-selected.read-write` | Opening `.db` and `.csv` files via file picker |
 | `files.bookmarks.app-scope` | Remembering file locations across launches |
-
----
-
-## Distributing
-
-### Developer ID (direct download)
-
-1. In Xcode: **Product → Archive**
-2. **Distribute App → Developer ID → Upload** (for notarisation)
-3. After notarisation, export the `.app` and wrap in a DMG
-
-### App Store
-
-Remove the `temporary-exception` entitlement, add `com.apple.security.app-sandbox` hardened
-runtime settings, and submit via App Store Connect.
