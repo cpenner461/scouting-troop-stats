@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scouting Stats</title>
+  <style>
+    :root {
+      --blue: #003F87;
+      --blue-dark: #002A5C;
+      --gold: #FDB927;
+      --gold-dark: #92400e;
+      --green: #00843D;
+      --olive: #4a5e28;
+      --olive-dark: #344219;
+      --bg: #e8ead8;
+      --card: #ffffff;
+      --border: #d4d8be;
+      --muted: #6b7280;
+      --shadow: 0 2px 10px rgba(0,0,0,0.08);
+      --radius: 12px;
+      --red: #BF0000;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: #111827;
+      min-height: 100vh;
+      font-size: 14px;
+    }
+    header {
+      background: var(--olive);
+      color: white;
+      padding: 0 20px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+    }
+    .logo { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .logo-icon { font-size: 1.4rem; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .header-user { font-size: 0.82rem; opacity: 0.85; }
+    .header-btn {
+      background: rgba(255,255,255,0.15); color: white; border: none;
+      padding: 6px 14px; border-radius: 8px; cursor: pointer;
+      font-size: 0.78rem; font-weight: 600;
+    }
+    .header-btn:hover { background: rgba(255,255,255,0.25); }
+
+    .page { display: none; }
+    .page.active { display: flex; justify-content: center; padding: 60px 20px; }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 36px 40px;
+      width: 100%;
+      max-width: 440px;
+    }
+    .card h2 { font-size: 1.2rem; margin-bottom: 6px; }
+    .card .subtitle { color: var(--muted); margin-bottom: 24px; font-size: 0.88rem; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 9px 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 0.9rem; font-family: inherit;
+    }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--olive); }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      background: var(--gold); color: var(--olive-dark);
+      padding: 10px 20px; border: none; border-radius: 8px;
+      cursor: pointer; font-weight: 700; font-size: 0.85rem; width: 100%;
+    }
+    .btn:hover { filter: brightness(1.05); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { background: var(--olive); color: white; }
+    .btn-danger { background: var(--red); color: white; }
+    .btn-sm { padding: 6px 12px; font-size: 0.78rem; width: auto; }
+
+    .link-row { text-align: center; margin-top: 16px; font-size: 0.85rem; }
+    .link-row a { color: var(--blue); text-decoration: none; font-weight: 600; }
+    .link-row a:hover { text-decoration: underline; }
+
+    .alert { padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 16px; }
+    .alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .alert-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .alert-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+
+    .troop-option { padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; cursor: pointer; }
+    .troop-option:hover { border-color: var(--olive); background: #f8f9f0; }
+    .troop-option.selected { border-color: var(--olive); background: #f0f4e0; }
+    .troop-option .name { font-weight: 700; }
+
+    .or-divider { text-align: center; margin: 20px 0; color: var(--muted); font-size: 0.82rem; font-weight: 600; position: relative; }
+    .or-divider::before, .or-divider::after {
+      content: ''; position: absolute; top: 50%; width: 40%;
+      height: 1px; background: var(--border);
+    }
+    .or-divider::before { left: 0; }
+    .or-divider::after { right: 0; }
+
+    .member-list { margin-top: 16px; }
+    .member-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .member-info { flex: 1; }
+    .member-name { font-weight: 700; font-size: 0.9rem; }
+    .member-email { font-size: 0.78rem; color: var(--muted); }
+    .member-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 12px;
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .badge-pending { background: #fef3c7; color: #92400e; }
+    .badge-approved { background: #d1fae5; color: #065f46; }
+
+    .manage-card { max-width: 640px; }
+    .tab-bar { display: flex; gap: 4px; margin-bottom: 20px; }
+    .tab-bar button {
+      background: transparent; border: 1px solid var(--border); padding: 7px 16px;
+      border-radius: 8px; cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--muted);
+    }
+    .tab-bar button.active { background: var(--olive); color: white; border-color: var(--olive); }
+    .pending-banner {
+      background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px;
+      padding: 14px; text-align: center; margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-icon">⚜️</span>
+    <span>Scouting Stats</span>
+  </div>
+  <div class="header-right" id="header-right" style="display:none">
+    <span class="header-user" id="header-user"></span>
+    <a href="/dashboard" class="header-btn" id="header-dashboard-btn" style="display:none">Dashboard</a>
+    <a href="/manage" class="header-btn" id="header-manage-btn" style="display:none">Manage Troop</a>
+    <button class="header-btn" onclick="logout()">Logout</button>
+  </div>
+</header>
+
+<!-- ══════════ LOGIN ══════════ -->
+<div class="page" id="page-login">
+  <div class="card">
+    <h2>Welcome Back</h2>
+    <p class="subtitle">Sign in to view your troop's stats.</p>
+    <div id="login-alert"></div>
+    <form onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-password" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn" id="login-btn">Sign In</button>
+    </form>
+    <div class="link-row">
+      <a href="#" onclick="navigate('forgot')">Forgot password?</a>
+    </div>
+    <div class="link-row">
+      Don't have an account? <a href="#" onclick="navigate('register')">Sign up</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ REGISTER ══════════ -->
+<div class="page" id="page-register">
+  <div class="card">
+    <h2>Create Account</h2>
+    <p class="subtitle">Set up your account to access your troop's stats.</p>
+    <div id="register-alert"></div>
+    <form onsubmit="handleRegister(event)">
+      <div class="form-group">
+        <label>Display Name</label>
+        <input type="text" id="register-name" required placeholder="e.g. John Smith">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="register-email" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="register-password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
+      </div>
+      <button type="submit" class="btn" id="register-btn">Create Account</button>
+    </form>
+    <div class="link-row">
+      Already have an account? <a href="#" onclick="navigate('login')">Sign in</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ FORGOT PASSWORD ══════════ -->
+<div class="page" id="page-forgot">
+  <div class="card">
+    <h2>Reset Password</h2>
+    <p class="subtitle">Enter your email to receive a reset token.</p>
+    <div id="forgot-alert"></div>
+    <form onsubmit="handleForgotPassword(event)">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="forgot-email" required autocomplete="email">
+      </div>
+      <button type="submit" class="btn" id="forgot-btn">Send Reset Token</button>
+    </form>
+    <div class="link-row">
+      <a href="#" onclick="navigate('login')">Back to sign in</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ RESET PASSWORD (with token) ══════════ -->
+<div class="page" id="page-reset">
+  <div class="card">
+    <h2>Set New Password</h2>
+    <div id="reset-alert"></div>
+    <form onsubmit="handleResetPassword(event)">
+      <div class="form-group">
+        <label>Reset Token</label>
+        <input type="text" id="reset-token" required placeholder="Paste your reset token">
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="reset-password" required minlength="8" autocomplete="new-password">
+      </div>
+      <button type="submit" class="btn" id="reset-btn">Reset Password</button>
+    </form>
+    <div class="link-row">
+      <a href="#" onclick="navigate('login')">Back to sign in</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TROOP SETUP ══════════ -->
+<div class="page" id="page-troop-setup">
+  <div class="card">
+    <h2>Set Up Your Troop</h2>
+    <p class="subtitle">Create a new troop or join an existing one.</p>
+    <div id="troop-setup-alert"></div>
+
+    <h3 style="font-size:0.95rem; margin-bottom:12px">Join an Existing Troop</h3>
+    <div id="troop-list"></div>
+
+    <div class="or-divider">OR</div>
+
+    <h3 style="font-size:0.95rem; margin-bottom:12px">Create a New Troop</h3>
+    <form onsubmit="handleCreateTroop(event)">
+      <div class="form-group">
+        <label>Troop Name</label>
+        <input type="text" id="create-troop-name" required placeholder="e.g. Troop 42">
+      </div>
+      <div class="form-group">
+        <label>Database Filename</label>
+        <input type="text" id="create-troop-db" required placeholder="e.g. troop42.db">
+      </div>
+      <button type="submit" class="btn">Create Troop</button>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════ PENDING APPROVAL ══════════ -->
+<div class="page" id="page-pending">
+  <div class="card" style="text-align:center">
+    <div style="font-size:2.5rem; margin-bottom:12px">⏳</div>
+    <h2>Awaiting Approval</h2>
+    <p class="subtitle">Your request to join <strong id="pending-troop-name"></strong> is pending approval by an existing troop member.</p>
+    <button class="btn btn-secondary" style="margin-top:16px" onclick="checkApproval()">Check Status</button>
+    <div class="link-row">
+      <a href="#" onclick="logout()">Sign out</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MANAGE TROOP ══════════ -->
+<div class="page" id="page-manage">
+  <div class="card manage-card">
+    <h2 id="manage-troop-title">Manage Troop</h2>
+    <div class="tab-bar">
+      <button class="active" onclick="showManageTab('members', this)">Members</button>
+      <button onclick="showManageTab('pending', this)">Pending Requests</button>
+    </div>
+    <div id="manage-alert"></div>
+    <div id="manage-members"></div>
+    <div id="manage-pending" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── State ──────────────────────────────────────────────────────────────────
+let currentUser = null;
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function getToken() { return localStorage.getItem('access_token'); }
+function getRefreshToken() { return localStorage.getItem('refresh_token'); }
+
+function setTokens(access, refresh) {
+  localStorage.setItem('access_token', access);
+  localStorage.setItem('refresh_token', refresh);
+}
+
+function clearTokens() {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+}
+
+function showAlert(id, message, type = 'error') {
+  document.getElementById(id).innerHTML = `<div class="alert alert-${type}">${esc(message)}</div>`;
+}
+
+function clearAlert(id) { document.getElementById(id).innerHTML = ''; }
+
+async function api(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  const token = getToken();
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const resp = await fetch(path, { ...options, headers });
+  if (resp.status === 401 && token) {
+    // Try refresh
+    const refreshed = await tryRefresh();
+    if (refreshed) {
+      headers['Authorization'] = 'Bearer ' + getToken();
+      return fetch(path, { ...options, headers });
+    }
+    clearTokens();
+    navigate('login');
+    throw new Error('Session expired');
+  }
+  return resp;
+}
+
+async function tryRefresh() {
+  const rt = getRefreshToken();
+  if (!rt) return false;
+  try {
+    const resp = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: rt }),
+    });
+    if (!resp.ok) return false;
+    const data = await resp.json();
+    setTokens(data.access_token, data.refresh_token);
+    return true;
+  } catch { return false; }
+}
+
+// ─── Navigation ─────────────────────────────────────────────────────────────
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById('page-' + page);
+  if (el) el.classList.add('active');
+  history.pushState(null, '', '/' + (page === 'login' ? 'login' : page === 'register' ? 'register' : page === 'troop-setup' ? 'troop-setup' : page === 'manage' ? 'manage' : page));
+}
+
+function logout() {
+  clearTokens();
+  currentUser = null;
+  navigate('login');
+  document.getElementById('header-right').style.display = 'none';
+}
+
+// ─── Auth handlers ──────────────────────────────────────────────────────────
+async function handleLogin(e) {
+  e.preventDefault();
+  clearAlert('login-alert');
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: document.getElementById('login-email').value,
+        password: document.getElementById('login-password').value,
+      }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      showAlert('login-alert', err.detail || 'Login failed');
+      return;
+    }
+    const data = await resp.json();
+    setTokens(data.access_token, data.refresh_token);
+    await loadUserAndRoute();
+  } catch (err) {
+    showAlert('login-alert', 'Network error. Please try again.');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function handleRegister(e) {
+  e.preventDefault();
+  clearAlert('register-alert');
+  const btn = document.getElementById('register-btn');
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: document.getElementById('register-email').value,
+        display_name: document.getElementById('register-name').value,
+        password: document.getElementById('register-password').value,
+      }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      showAlert('register-alert', err.detail || 'Registration failed');
+      return;
+    }
+    const data = await resp.json();
+    setTokens(data.access_token, data.refresh_token);
+    await loadUserAndRoute();
+  } catch (err) {
+    showAlert('register-alert', 'Network error. Please try again.');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function handleForgotPassword(e) {
+  e.preventDefault();
+  clearAlert('forgot-alert');
+  const btn = document.getElementById('forgot-btn');
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/api/auth/reset-password/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: document.getElementById('forgot-email').value }),
+    });
+    const data = await resp.json();
+    if (data.token) {
+      showAlert('forgot-alert', 'Reset token: ' + data.token + ' — use this to reset your password.', 'success');
+      setTimeout(() => navigate('reset'), 2000);
+    } else {
+      showAlert('forgot-alert', data.message, 'info');
+    }
+  } catch { showAlert('forgot-alert', 'Network error.'); }
+  finally { btn.disabled = false; }
+}
+
+async function handleResetPassword(e) {
+  e.preventDefault();
+  clearAlert('reset-alert');
+  const btn = document.getElementById('reset-btn');
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/api/auth/reset-password/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: document.getElementById('reset-token').value,
+        new_password: document.getElementById('reset-password').value,
+      }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      showAlert('reset-alert', err.detail || 'Reset failed');
+      return;
+    }
+    showAlert('reset-alert', 'Password reset! You can now sign in.', 'success');
+    setTimeout(() => navigate('login'), 1500);
+  } catch { showAlert('reset-alert', 'Network error.'); }
+  finally { btn.disabled = false; }
+}
+
+// ─── Troop setup ────────────────────────────────────────────────────────────
+async function loadTroopList() {
+  try {
+    const resp = await api('/api/troops');
+    if (!resp.ok) return;
+    const troops = await resp.json();
+    const container = document.getElementById('troop-list');
+    if (troops.length === 0) {
+      container.innerHTML = '<p style="color:var(--muted);font-size:0.85rem">No troops exist yet. Create the first one below.</p>';
+      return;
+    }
+    container.innerHTML = troops.map(t =>
+      `<div class="troop-option" onclick="handleJoinTroop(${t.id}, this)">
+        <div class="name">${esc(t.name)}</div>
+      </div>`
+    ).join('');
+  } catch {}
+}
+
+async function handleJoinTroop(troopId, el) {
+  clearAlert('troop-setup-alert');
+  document.querySelectorAll('.troop-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  try {
+    const resp = await api('/api/troops/join', {
+      method: 'POST',
+      body: JSON.stringify({ troop_id: troopId }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      showAlert('troop-setup-alert', err.detail || 'Failed to join troop');
+      return;
+    }
+    showAlert('troop-setup-alert', 'Join request submitted! Waiting for approval.', 'success');
+    await loadUserAndRoute();
+  } catch { showAlert('troop-setup-alert', 'Network error.'); }
+}
+
+async function handleCreateTroop(e) {
+  e.preventDefault();
+  clearAlert('troop-setup-alert');
+  try {
+    const resp = await api('/api/troops', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: document.getElementById('create-troop-name').value,
+        db_filename: document.getElementById('create-troop-db').value,
+      }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      showAlert('troop-setup-alert', err.detail || 'Failed to create troop');
+      return;
+    }
+    showAlert('troop-setup-alert', 'Troop created!', 'success');
+    setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
+  } catch { showAlert('troop-setup-alert', 'Network error.'); }
+}
+
+// ─── Manage troop ───────────────────────────────────────────────────────────
+function showManageTab(tab, btn) {
+  document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('manage-members').style.display = tab === 'members' ? '' : 'none';
+  document.getElementById('manage-pending').style.display = tab === 'pending' ? '' : 'none';
+}
+
+async function loadManagePage() {
+  try {
+    const troopResp = await api('/api/troops/mine');
+    if (!troopResp.ok) return;
+    const troop = await troopResp.json();
+    document.getElementById('manage-troop-title').textContent = 'Manage ' + troop.name;
+
+    // Load members
+    const membersResp = await api('/api/troops/members');
+    const members = membersResp.ok ? await membersResp.json() : [];
+    const membersHtml = members.length
+      ? members.map(m => `
+        <div class="member-item">
+          <div class="member-info">
+            <div class="member-name">${esc(m.display_name)}</div>
+            <div class="member-email">${esc(m.email)}</div>
+          </div>
+          ${m.user_id !== currentUser.id ? `<button class="btn btn-danger btn-sm" onclick="removeMember(${m.user_id})">Remove</button>` : '<span class="member-badge badge-approved">You</span>'}
+        </div>`).join('')
+      : '<p style="color:var(--muted)">No members.</p>';
+    document.getElementById('manage-members').innerHTML = membersHtml;
+
+    // Load pending
+    const pendingResp = await api('/api/troops/pending');
+    const pending = pendingResp.ok ? await pendingResp.json() : [];
+    const pendingHtml = pending.length
+      ? pending.map(m => `
+        <div class="member-item">
+          <div class="member-info">
+            <div class="member-name">${esc(m.display_name)}</div>
+            <div class="member-email">${esc(m.email)}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm" onclick="approveMember(${m.user_id})">Approve</button>
+            <button class="btn btn-danger btn-sm" onclick="removeMember(${m.user_id})">Deny</button>
+          </div>
+        </div>`).join('')
+      : '<p style="color:var(--muted)">No pending requests.</p>';
+    document.getElementById('manage-pending').innerHTML = pendingHtml;
+  } catch (err) { console.error(err); }
+}
+
+async function approveMember(userId) {
+  clearAlert('manage-alert');
+  try {
+    const resp = await api(`/api/troops/members/${userId}/approve`, { method: 'POST' });
+    if (!resp.ok) {
+      const err = await resp.json();
+      showAlert('manage-alert', err.detail || 'Failed to approve');
+      return;
+    }
+    showAlert('manage-alert', 'Member approved!', 'success');
+    loadManagePage();
+  } catch { showAlert('manage-alert', 'Network error.'); }
+}
+
+async function removeMember(userId) {
+  if (!confirm('Are you sure you want to remove this member?')) return;
+  clearAlert('manage-alert');
+  try {
+    const resp = await api(`/api/troops/members/${userId}`, { method: 'DELETE' });
+    if (!resp.ok) {
+      const err = await resp.json();
+      showAlert('manage-alert', err.detail || 'Failed to remove');
+      return;
+    }
+    showAlert('manage-alert', 'Member removed.', 'success');
+    loadManagePage();
+  } catch { showAlert('manage-alert', 'Network error.'); }
+}
+
+async function checkApproval() {
+  await loadUserAndRoute();
+}
+
+// ─── Routing ────────────────────────────────────────────────────────────────
+async function loadUserAndRoute() {
+  const token = getToken();
+  if (!token) { navigate('login'); return; }
+
+  try {
+    const resp = await api('/api/auth/me');
+    if (!resp.ok) { clearTokens(); navigate('login'); return; }
+    currentUser = await resp.json();
+  } catch { clearTokens(); navigate('login'); return; }
+
+  // Show header user info
+  document.getElementById('header-right').style.display = 'flex';
+  document.getElementById('header-user').textContent = currentUser.display_name;
+
+  if (!currentUser.troop) {
+    // No troop membership - go to troop setup
+    document.getElementById('header-dashboard-btn').style.display = 'none';
+    document.getElementById('header-manage-btn').style.display = 'none';
+    navigate('troop-setup');
+    loadTroopList();
+  } else if (currentUser.troop.status === 'pending') {
+    document.getElementById('header-dashboard-btn').style.display = 'none';
+    document.getElementById('header-manage-btn').style.display = 'none';
+    document.getElementById('pending-troop-name').textContent = currentUser.troop.name;
+    navigate('pending');
+  } else {
+    // Approved member
+    document.getElementById('header-dashboard-btn').style.display = '';
+    document.getElementById('header-manage-btn').style.display = '';
+    // Route based on current URL
+    const path = window.location.pathname;
+    if (path === '/manage') {
+      navigate('manage');
+      loadManagePage();
+    } else {
+      // Default: go to dashboard
+      window.location.href = '/dashboard';
+    }
+  }
+}
+
+// ─── Init ───────────────────────────────────────────────────────────────────
+(async () => {
+  const path = window.location.pathname;
+  if (path === '/register') navigate('register');
+  else if (path === '/manage') { await loadUserAndRoute(); }
+  else if (path === '/troop-setup') { await loadUserAndRoute(); }
+  else { await loadUserAndRoute(); }
+})();
+</script>
+</body>
+</html>

@@ -14,6 +14,11 @@ scouting-mcp = "scouting_db.mcp_server:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+webapp = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic[email]>=2.9.0",
+]
 
 [build-system]
 requires = ["hatchling"]
