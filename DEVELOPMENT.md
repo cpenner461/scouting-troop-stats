@@ -236,6 +236,42 @@ Add the server to your Claude Code MCP settings (`.claude/mcp_servers.json` or v
 }
 ```
 
+## Web App (Multi-User Dashboard)
+
+A FastAPI web application that serves the dashboard with multi-user authentication and per-troop data isolation. Users register, create or join a troop (with approval), and view their troop's stats through the same dashboard — backed by server-side API calls instead of client-side sql.js.
+
+### Running the webapp
+
+```bash
+uv sync --extra webapp
+uv run scouting-webapp
+```
+
+Then visit `http://localhost:8000`. Register an account, create a troop (pointing it at your `.db` filename), and you're in.
+
+### How it works
+
+- **App database** (`app.db`) stores users, troops, and memberships
+- Each troop points to a separate `.db` file on disk (synced externally via the CLI)
+- The dashboard makes `fetch()` calls to `/api/troop/query`, which executes read-only SQL against the user's troop database
+- Write operations are blocked at the API level
+- JWT authentication with access/refresh tokens
+
+### Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SECRET_KEY` | Random on startup | JWT signing key. Set this in production for persistent sessions. |
+| `APP_DB_PATH` | `./app.db` | Path to the app database (users, troops, memberships) |
+| `TROOP_DB_DIR` | Project root | Directory where troop `.db` files are stored |
+
+### Troop membership flow
+
+1. New user registers (email + password)
+2. User creates a new troop (auto-approved) or requests to join an existing one (pending)
+3. Any approved member of a troop can approve pending requests or remove other members
+4. Approved members see the dashboard with their troop's data
+
 ## Database
 
 All data is stored in `scouting_troop.db` (SQLite) in your current working directory. You can query it directly:
@@ -255,7 +291,7 @@ uv run scouting --db /path/to/other.db sync-ranks
 
 ```
 scouting-troop-stats/
-  pyproject.toml              # Project config, defines `scouting` and `scouting-mcp` entry points
+  pyproject.toml              # Project config, defines `scouting`, `scouting-mcp`, and `scouting-webapp` entry points
   uv.lock                     # Lockfile (auto-generated)
   dashboard.html              # Browser dashboard (open via http.server or file picker)
   sample_troop.db             # Sample database with 50 fictional scouts for exploring the dashboard
@@ -268,9 +304,20 @@ scouting-troop-stats/
     db.py                     # SQLite schema, init, upsert functions
     queries.py                # Troop-wide analytical SQL queries
     mcp_server.py             # MCP server exposing the database to AI assistants
+  webapp/                     # Multi-user FastAPI web app
+    main.py                   # FastAPI app, static file serving
+    run.py                    # Entry point for `uv run scouting-webapp`
+    auth.py                   # JWT auth (stdlib HMAC-SHA256), password hashing
+    database.py               # App DB schema (users, troops, memberships)
+    config.py                 # Settings (SECRET_KEY, DB paths)
+    models.py                 # Pydantic request/response schemas
+    dependencies.py           # Auth middleware
+    routes/                   # API route modules (auth, troops, dashboard)
+    static/dashboard.html     # Adapted dashboard (server-side API)
+    templates/index.html      # Login, register, troop setup, manage pages
 ```
 
-Dependencies: `mcp[cli]` (for the MCP server). The CLI itself uses only the Python standard library (`urllib`, `sqlite3`, `csv`, `json`, `argparse`).
+Dependencies: `mcp[cli]` (for the MCP server). The CLI itself uses only the Python standard library (`urllib`, `sqlite3`, `csv`, `json`, `argparse`). The webapp uses `fastapi`, `uvicorn`, and `pydantic[email]` (install via `uv sync --extra webapp`).
 
 ## macOS App Development
 
