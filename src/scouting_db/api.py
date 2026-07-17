@@ -83,8 +83,17 @@ class ScoutingAPI:
             params["programId"] = program_id
         return self._request("/advancements/ranks", params)
 
-    def get_rank_requirements(self, rank_id):
-        return self._request(f"/advancements/ranks/{rank_id}/requirements")
+    def get_rank_requirements(self, rank_id, version_id=None):
+        """Public endpoint: requirement definitions for a rank.
+
+        Without version_id, the API returns the current/latest requirement
+        set, which can have entirely different requirement ids than the
+        version a given Scout is actually working under (BSA periodically
+        revises rank requirement text). Pass the versionId from a Scout's
+        in-progress rank (get_youth_ranks) to fetch the matching definitions.
+        """
+        params = {"versionId": version_id} if version_id else None
+        return self._request(f"/advancements/ranks/{rank_id}/requirements", params)
 
     # --- Auth-required endpoints ---
 

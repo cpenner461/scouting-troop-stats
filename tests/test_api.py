@@ -224,6 +224,15 @@ class TestScoutingAPIEndpoints:
         url = self._get_url(self.api.get_rank_requirements, 123)
         assert "/advancements/ranks/123/requirements" in url
 
+    def test_get_rank_requirements_no_version_omits_param(self):
+        url = self._get_url(self.api.get_rank_requirements, 123)
+        assert "versionId" not in url
+
+    def test_get_rank_requirements_with_version_id(self):
+        url = self._get_url(self.api.get_rank_requirements, 123, version_id=73)
+        assert "/advancements/ranks/123/requirements" in url
+        assert "versionId=73" in url
+
     def test_get_youth_ranks_url(self):
         url = self._get_url(self.api.get_youth_ranks, "U99")
         assert "/advancements/v2/youth/U99/ranks" in url

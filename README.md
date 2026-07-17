@@ -6,22 +6,22 @@ A tool for Scout leaders to download Scout advancement data from the Scouting Am
 
 ## Getting the App
 
-### macOS App (recommended)
+### Web App (recommended)
 
-The native macOS app handles everything -- sign in, sync your troop's data, and explore the dashboard -- all in one window with no prerequisites to install. It's a lightweight SwiftUI wrapper around the same dashboard, with built-in sync. No Electron, no Python runtime, just a ~10 MB `.app` that runs on macOS 13+.
+Run a local web server that handles everything -- sign in, sync your troop's data, and explore the dashboard -- all in one browser tab. Requires Python 3.10+ and [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
 ```bash
-# Build and create a DMG (requires Xcode 15+ and xcodegen)
-brew install xcodegen
-cd macos-app
-make dmg
+git clone <this-repo>
+cd scouting-troop-stats
+uv sync
+uv run scouting serve
 ```
 
-The DMG is created at `macos-app/build/Scouting Stats.dmg`. See [`macos-app/README.md`](macos-app/README.md) for full build options including signed distribution.
+This opens your browser to `http://127.0.0.1:8765/`. Visit `/sync` to sign in and sync your troop's data (with an optional roster CSV upload); the dashboard at `/` reads directly from the resulting `scouting_troop.db`.
 
 ### Browser Dashboard
 
-If you're not on macOS, or you already have a database file (`.db`), you can open the dashboard directly in any modern browser:
+If you already have a database file (`.db`), you can open the dashboard directly in any modern browser:
 
 1. Open `dashboard.html` in your browser
 2. Click **Open Database** and select your `.db` file
@@ -97,4 +97,4 @@ Claude Code was used extensively to build this. The [scouting-api](https://githu
 
 ## For Developers
 
-If you want to run the Python CLI tools, contribute to the project, or build the macOS app from source, see the [Development Guide](DEVELOPMENT.md).
+If you want to run the Python CLI tools or contribute to the project, see the [Development Guide](DEVELOPMENT.md).

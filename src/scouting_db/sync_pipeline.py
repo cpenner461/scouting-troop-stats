@@ -1,129 +1,103 @@
-"""Native app sync entry point for Electron integration.
+"""Shared sync pipeline: authenticate, initialize the database, sync ranks,
+optionally import a roster CSV, then sync all Scouts' advancement data.
 
-Called by the Electron main process (via python-bridge/sync_runner.py when
-bundled, or directly via `uv run python -m scouting_db.native_sync` in dev).
+Progress is reported via the on_progress(kind, data) callback instead of
+printing to stdout, so callers (e.g. the web server's SSE stream) can
+forward each event to a client in real time.
 
-Outputs JSON-newline progress messages to stdout so the Electron renderer can
-display live status. Password is read from the SCOUTING_PASSWORD env var
-and never passed on the command line.
-
-Exit codes:
-  0 — success
-  1 — error (message emitted before exit)
+kind is one of: "step", "log", "error", "complete".
 """
 
-import argparse
 import json
 import os
-import sys
+
+from scouting_db.api import ScoutingAPI, ScoutingAPIError, authenticate
+from scouting_db.db import (
+    get_connection,
+    import_roster_csv,
+    init_db,
+    store_leadership,
+    store_youth_mb_requirements,
+    store_youth_merit_badges,
+    store_youth_rank_requirements,
+    store_youth_ranks,
+    upsert_mb_requirements,
+    upsert_ranks,
+    upsert_requirements,
+    upsert_scout,
+)
+
+SCOUTS_BSA_PROGRAM_ID = 2
 
 
-# ─── Progress helpers ────────────────────────────────────────────────────────
+def run_sync(
+    username,
+    password,
+    troop_name,
+    db_path,
+    config_path,
+    csv_path=None,
+    skip_reqs=False,
+    on_progress=lambda kind, data: None,
+):
+    """Run the full sync pipeline, reporting progress via on_progress.
 
-def _emit(msg_type: str, **kwargs) -> None:
-    """Print a JSON progress line to stdout and flush immediately."""
-    print(json.dumps({"type": msg_type, **kwargs}), flush=True)
+    Returns True on success, False if it stopped early due to an error
+    (an "error" event has already been sent to on_progress in that case).
+    """
+    def step(message):
+        on_progress("step", {"message": message})
 
+    def log(message):
+        on_progress("log", {"message": message})
 
-def step(message: str) -> None:
-    _emit("step", message=message)
+    def error(message):
+        on_progress("error", {"message": message})
 
+    def complete():
+        on_progress("complete", {"db_path": db_path})
 
-def log(message: str) -> None:
-    _emit("log", message=message)
-
-
-def error(message: str) -> None:
-    _emit("error", message=message)
-
-
-def complete(db_path: str) -> None:
-    _emit("complete", db_path=db_path)
-
-
-# ─── Main ────────────────────────────────────────────────────────────────────
-
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Sync scouting advancement data for the native desktop app"
-    )
-    parser.add_argument("--username",    required=True, help="my.scouting.org username")
-    parser.add_argument("--troop-name",  default="My Troop", help="Troop display name")
-    parser.add_argument("--db-path",     required=True, help="Path to write SQLite database")
-    parser.add_argument("--config-path", required=True, help="Path to write config.json (token)")
-    parser.add_argument("--csv-path",    default=None,  help="Path to Scoutbook roster CSV (optional)")
-    parser.add_argument("--skip-reqs",   action="store_true",
-                        help="Skip per-requirement completion sync (faster)")
-    args = parser.parse_args()
-
-    password = os.environ.get("SCOUTING_PASSWORD", "")
-    if not password:
-        error("SCOUTING_PASSWORD environment variable is not set.")
-        sys.exit(1)
-
-    # Ensure parent directories exist
-    for p in (args.db_path, args.config_path):
+    for p in (db_path, config_path):
         parent = os.path.dirname(p)
         if parent:
             os.makedirs(parent, exist_ok=True)
 
-    # ── Step 1: Authenticate ─────────────────────────────────────────────────
-    step(f"Authenticating as {args.username}…")
+    # ── Step 1: Authenticate ─────────────────────────────────────────────
+    step(f"Authenticating as {username}…")
     try:
-        from scouting_db.api import ScoutingAPI, ScoutingAPIError, authenticate
-    except ImportError as exc:
-        error(f"Import error — packaging issue: {exc}")
-        sys.exit(1)
-
-    try:
-        token, user_id = authenticate(args.username, password)
+        token, user_id = authenticate(username, password)
     except ScoutingAPIError as exc:
         if exc.status_code in (401, 403):
             error("Authentication failed — please check your username and password.")
         else:
             error(f"Authentication failed ({exc.status_code}): {exc.message[:200]}")
-        sys.exit(1)
-    except Exception as exc:
-        error(f"Unexpected error during authentication: {exc}")
-        sys.exit(1)
+        return False
 
-    # Save token so it can be reused without re-authenticating
-    config = {"username": args.username, "token": token}
+    config = {"username": username, "token": token}
     if user_id:
         config["user_id"] = str(user_id)
-    with open(args.config_path, "w") as fh:
+    with open(config_path, "w") as fh:
         json.dump(config, fh, indent=2)
         fh.write("\n")
 
     log("  ✓ Authentication successful")
 
-    # ── Step 2: Initialise database ──────────────────────────────────────────
+    # ── Step 2: Initialise database ──────────────────────────────────────
     step("Initialising database…")
-    try:
-        from scouting_db.db import (
-            get_connection, init_db, import_roster_csv,
-            store_leadership, store_youth_mb_requirements,
-            store_youth_merit_badges, store_youth_rank_requirements,
-            store_youth_ranks, upsert_mb_requirements,
-            upsert_ranks, upsert_requirements, upsert_scout,
-        )
-    except ImportError as exc:
-        error(f"Import error: {exc}")
-        sys.exit(1)
+    conn = get_connection(db_path)
+    init_db(conn, troop_name=troop_name)
 
-    conn = get_connection(args.db_path)
-    init_db(conn, troop_name=args.troop_name)
-
-    # ── Step 3: Sync rank definitions (public, no auth needed) ───────────────
+    # ── Step 3: Sync rank definitions (public, no auth needed) ──────────
     step("Downloading rank definitions…")
+    api = ScoutingAPI(token=token)
     try:
-        api = ScoutingAPI(token=token)
-        ranks_data = api.get_ranks(program_id=2)
+        ranks_data = api.get_ranks(program_id=SCOUTS_BSA_PROGRAM_ID)
         count = upsert_ranks(conn, ranks_data)
         log(f"  {count} ranks stored")
 
         rank_rows = conn.execute(
-            "SELECT id, name FROM ranks WHERE program_id = 2 ORDER BY level"
+            "SELECT id, name FROM ranks WHERE program_id = ? ORDER BY level",
+            (SCOUTS_BSA_PROGRAM_ID,),
         ).fetchall()
         for row in rank_rows:
             try:
@@ -138,34 +112,33 @@ def main() -> None:
     except ScoutingAPIError as exc:
         log(f"  Warning: could not sync ranks ({exc.status_code}) — continuing")
 
-    # ── Step 4: Import roster CSV (optional) ─────────────────────────────────
-    if args.csv_path:
-        step(f"Importing roster: {os.path.basename(args.csv_path)}…")
+    # ── Step 4: Import roster CSV (optional) ─────────────────────────────
+    if csv_path:
+        step(f"Importing roster: {os.path.basename(csv_path)}…")
         try:
-            imported, skipped = import_roster_csv(conn, args.csv_path)
+            imported, skipped = import_roster_csv(conn, csv_path)
             log(f"  {imported} Scouts imported ({skipped} rows skipped)")
         except (ValueError, OSError) as exc:
             log(f"  Warning: roster import failed: {exc}")
 
-    # ── Step 5: Sync advancement data ────────────────────────────────────────
+    # ── Step 5: Sync advancement data ─────────────────────────────────────
     scouts = conn.execute(
         "SELECT user_id, first_name, last_name FROM scouts"
     ).fetchall()
 
     if not scouts:
         log("No Scouts in database.")
-        if not args.csv_path:
+        if not csv_path:
             log("Tip: import a roster CSV to add Scouts (Scoutbook → Reports → Export CSV).")
         conn.close()
-        complete(args.db_path)
-        return
+        complete()
+        return True
 
     total = len(scouts)
     step(f"Syncing advancement data for {total} Scout{'s' if total != 1 else ''}…")
 
-    SCOUTS_BSA_PROGRAM_ID = 2
-    mb_defn_cache: dict = {}    # mb_id -> version_id (already stored)
-    rank_defn_cache: set = set()  # rank_ids already stored
+    mb_defn_cache = {}     # mb_id -> version_id (already stored)
+    rank_defn_cache = set()  # (rank_id, version_id) pairs already stored
 
     for i, scout in enumerate(scouts, 1):
         uid = scout["user_id"]
@@ -181,11 +154,11 @@ def main() -> None:
             if exc.status_code == 401:
                 error("Token expired mid-sync. Please re-authenticate.")
                 conn.close()
-                sys.exit(1)
+                return False
             log(f"    ⚠ ranks: HTTP {exc.status_code}")
 
         # Rank requirement completions (in-progress ranks only)
-        if not args.skip_reqs and ranks_data:
+        if not skip_reqs and ranks_data:
             for prog in ranks_data.get("program") or []:
                 if prog.get("programId") != SCOUTS_BSA_PROGRAM_ID:
                     continue
@@ -196,11 +169,13 @@ def main() -> None:
                     if not rank_id:
                         continue
                     rank_id = int(rank_id)
+                    version_id = rank.get("versionId")
                     try:
-                        if rank_id not in rank_defn_cache:
-                            defn = api.get_rank_requirements(rank_id)
+                        cache_key = (rank_id, version_id)
+                        if cache_key not in rank_defn_cache:
+                            defn = api.get_rank_requirements(rank_id, version_id=version_id)
                             upsert_requirements(conn, rank_id, defn)
-                            rank_defn_cache.add(rank_id)
+                            rank_defn_cache.add(cache_key)
                         youth_reqs = api.get_youth_rank_requirements(uid, rank_id)
                         store_youth_rank_requirements(conn, uid, rank_id, youth_reqs)
                     except ScoutingAPIError:
@@ -215,7 +190,7 @@ def main() -> None:
             log(f"    ⚠ merit badges: HTTP {exc.status_code}")
 
         # MB requirement completions (in-progress MBs only)
-        if not args.skip_reqs and mb_data:
+        if not skip_reqs and mb_data:
             in_progress = [
                 mb for mb in (mb_data if isinstance(mb_data, list) else [])
                 if not (mb.get("dateCompleted") or mb.get("dateEarned"))
@@ -259,8 +234,5 @@ def main() -> None:
 
     conn.close()
     step(f"✓ Synced {total} Scout{'s' if total != 1 else ''} successfully")
-    complete(args.db_path)
-
-
-if __name__ == "__main__":
-    main()
+    complete()
+    return True

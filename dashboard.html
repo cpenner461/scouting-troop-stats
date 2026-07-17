@@ -819,8 +819,6 @@
     <button class="tab-btn" data-view="tents" onclick="switchView('tents',this)">Tents</button>
     <button class="tab-btn" data-view="db" id="db-tab" onclick="switchView('db',this)">Settings</button>
   </nav>
-  <!-- Shown only when running as the native desktop app -->
-  <button id="electron-sync-btn" style="display:none;background:rgba(255,255,255,0.15);color:white;border:none;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:0.78rem;font-weight:600;margin-left:8px;white-space:nowrap;letter-spacing:0.01em" title="Open sync panel">⇄ Sync</button>
 </header>
 
 <!-- ══════════ DB VIEW ══════════ -->
@@ -833,6 +831,12 @@
       <label class="file-label" for="db-file">📂 Open Database</label>
       <input type="file" id="db-file" accept=".db,.sqlite,.sqlite3">
       <div id="db-status"></div>
+    </div>
+    <div class="db-card" id="db-sync-card" style="display:none">
+      <div class="db-card-icon">🔄</div>
+      <h2>Sync Data</h2>
+      <p>Sign in and sync your troop's latest advancement data from Scoutbook.</p>
+      <a class="file-label" href="sync">🔄 Go to Sync</a>
     </div>
     <div class="db-card db-info-card" id="db-info-card" style="display:none">
       <h2>📊 Database Info</h2>
@@ -965,13 +969,7 @@
 </div>
 
 <!-- ══════════ SCRIPTS ══════════ -->
-<script>
-// Load sql.js from CDN for standalone web use.
-// In Electron, sql.js is vendored locally and loaded via IPC in initSQL().
-if (!window.electronAPI) {
-  document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></' + 'script>');
-}
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
 <script>
 'use strict';
 
@@ -1121,23 +1119,9 @@ document.addEventListener('keydown', function(e) {
 // ─── DB loading ──────────────────────────────────────────────────────────────
 async function initSQL() {
   if (SQL) return;
-  if (window.electronAPI) {
-    // Electron: load vendored sql.js entirely via IPC (no fetch/CDN needed).
-    const { vendorPath } = await window.electronAPI.getPaths();
-    if (typeof initSqlJs === 'undefined') {
-      const jsBuf = await window.electronAPI.readFile(vendorPath + '/sql-wasm.js');
-      const s = document.createElement('script');
-      s.textContent = new TextDecoder().decode(jsBuf);
-      document.head.appendChild(s);
-    }
-    const wasmBuf = await window.electronAPI.readFile(vendorPath + '/sql-wasm.wasm');
-    SQL = await initSqlJs({ wasmBinary: new Uint8Array(wasmBuf) });
-  } else {
-    // Standalone web: fetch WASM from CDN
-    SQL = await initSqlJs({
-      locateFile: f => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/' + f
-    });
-  }
+  SQL = await initSqlJs({
+    locateFile: f => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/' + f
+  });
 }
 
 async function loadDbBuffer(buf, filename) {
@@ -1219,6 +1203,11 @@ document.getElementById('db-file').addEventListener('change', async function (e)
     console.error(err);
   }
 });
+
+// Only the web server can handle /sync -- hide the link when opened via file://
+if (location.protocol === 'http:' || location.protocol === 'https:') {
+  document.getElementById('db-sync-card').style.display = '';
+}
 
 // Auto-load scouting_troop.db from the same directory (works when served over HTTP)
 (async () => {
@@ -3091,56 +3080,6 @@ function fmtDt(s) {
   } catch { return s; }
 }
 
-// ─── Electron native-app integration ─────────────────────────────────────────
-// This block runs only when dashboard.html is loaded inside the Electron app.
-// It auto-loads the synced database from the OS user-data directory and
-// wires up the "⇄ Sync" header button to return to the launcher screen.
-if (window.electronAPI) {
-  // Show the Sync button only in Electron, not in the native macOS app
-  const syncBtn = document.getElementById('electron-sync-btn');
-  if (syncBtn && !window.electronAPI.isNativeApp) {
-    syncBtn.style.display = '';
-    syncBtn.addEventListener('click', () => window.electronAPI.navigate('launcher'));
-  }
-
-  // Hide the "Load Database" panel in the native macOS app (db is managed by the app)
-  if (window.electronAPI.isNativeApp) {
-    const loadCard = document.getElementById('db-load-card');
-    if (loadCard) loadCard.style.display = 'none';
-  }
-
-  // macOS fix: with titleBarStyle:'hiddenInset', the OS creates an implicit
-  // ~22px drag region across the top of the window that swallows mouseover
-  // and click events — making the top of header buttons unreachable.
-  // Explicitly designating the header as the drag region and marking all
-  // interactive children as no-drag restores normal hover/click behaviour.
-  // Also add left padding to clear the traffic-light window controls.
-  const headerEl = document.querySelector('header');
-  if (headerEl) {
-    headerEl.style.webkitAppRegion = 'drag';
-    if (navigator.platform.startsWith('Mac')) {
-      headerEl.style.paddingLeft = '78px';
-    }
-    headerEl.querySelectorAll('button, a, input, label, select').forEach(el => {
-      el.style.webkitAppRegion = 'no-drag';
-    });
-  }
-
-  // Auto-load the database that was written by the sync process.
-  // Falls back gracefully if no database exists yet (first launch).
-  (async () => {
-    try {
-      const { dbPath } = await window.electronAPI.getPaths();
-      const buf = await window.electronAPI.readFile(dbPath);
-      if (buf) {
-        await loadDbBuffer(buf, 'scouting_troop.db');
-      }
-    } catch (e) {
-      // No database yet — user needs to sync first via the launcher.
-      console.log('[Electron] No database to auto-load:', e.message);
-    }
-  })();
-}
 </script>
 </body>
 </html>

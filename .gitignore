@@ -6,7 +6,3 @@ __pycache__/
 *.pyc
 .venv/
 *.csv
-
-# macOS native app
-macos-app/build/
-macos-app/ScoutingTroopStats.xcodeproj/

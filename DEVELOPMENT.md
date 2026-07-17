@@ -187,6 +187,16 @@ uv run scouting query req-matrix --rank-id 4     # First Class requirements
 uv run scouting query req-matrix                  # Lists available rank IDs
 ```
 
+### Web Server
+
+```bash
+uv run scouting serve                # starts on http://127.0.0.1:8765/, opens a browser
+uv run scouting serve --port 9000    # use a different port
+uv run scouting serve --no-browser   # don't auto-open a browser
+```
+
+Serves the dashboard at `/` (reading the `.db` at `--db`, or the default `scouting_troop.db` in the current directory) and a sign-in/sync form at `/sync` that streams live progress while it authenticates, imports an optional roster CSV, and syncs advancement data -- the same pipeline as `sync-scouts`, in the browser.
+
 ### Debugging
 
 The `discover` command probes multiple API endpoints for a single Scout and prints the raw JSON responses:
@@ -259,19 +269,16 @@ scouting-troop-stats/
   uv.lock                     # Lockfile (auto-generated)
   dashboard.html              # Browser dashboard (open via http.server or file picker)
   sample_troop.db             # Sample database with 50 fictional scouts for exploring the dashboard
-  macos-app/                  # Native macOS app (SwiftUI + WKWebView)
-    project.yml               # XcodeGen spec — `xcodegen generate` creates the Xcode project
-    Makefile                  # `make dmg` builds a distributable DMG
   src/scouting_db/
     cli.py                    # CLI entry point (argparse subcommands)
     api.py                    # HTTP client for api.scouting.org
     db.py                     # SQLite schema, init, upsert functions
     queries.py                # Troop-wide analytical SQL queries
+    sync_pipeline.py          # Shared authenticate+sync pipeline (used by CLI and web server)
+    webserver.py              # Local web server: dashboard, synced .db, sync form (SSE)
+    multipart.py              # Minimal multipart/form-data parser for the sync form upload
     mcp_server.py             # MCP server exposing the database to AI assistants
 ```
 
 Dependencies: `mcp[cli]` (for the MCP server). The CLI itself uses only the Python standard library (`urllib`, `sqlite3`, `csv`, `json`, `argparse`).
 
-## macOS App Development
-
-See the [macOS app README](macos-app/README.md) for building and developing the native Swift app.

@@ -22,6 +22,7 @@ import click
 
 from scouting_db.api import ScoutingAPI, ScoutingAPIError, authenticate
 from scouting_db.db import (
+    DEFAULT_DB_PATH,
     get_connection,
     import_roster_csv,
     init_db,
@@ -204,7 +205,7 @@ def cmd_sync_scouts(args):
     # Cache MB requirement definitions to avoid re-fetching for multiple Scouts
     mb_defn_cache = {}  # mb_id -> version_id (already stored)
     # Cache rank requirement definitions to avoid re-fetching
-    rank_defn_cache = set()  # rank_ids already stored
+    rank_defn_cache = set()  # (rank_id, version_id) pairs already stored
 
     total = len(scouts)
     width = len(str(total))
@@ -237,15 +238,20 @@ def cmd_sync_scouts(args):
                     if not (rank.get("dateEarned") or rank.get("dateCompleted")):
                         rank_id = rank.get("id")
                         if rank_id:
-                            in_progress_ranks.append(int(rank_id))
+                            in_progress_ranks.append((int(rank_id), rank.get("versionId")))
             rank_req_count = 0
-            for rank_id in in_progress_ranks:
+            for rank_id, version_id in in_progress_ranks:
                 try:
-                    # Cache rank requirement definitions
-                    if rank_id not in rank_defn_cache:
-                        defn = api.get_rank_requirements(rank_id)
+                    # Cache rank requirement definitions per (rank_id, version_id):
+                    # BSA periodically revises rank requirement text, and the
+                    # current/latest definitions can use entirely different
+                    # requirement ids than the version a Scout is actually
+                    # working under, so we must fetch the matching version.
+                    cache_key = (rank_id, version_id)
+                    if cache_key not in rank_defn_cache:
+                        defn = api.get_rank_requirements(rank_id, version_id=version_id)
                         upsert_requirements(conn, rank_id, defn)
-                        rank_defn_cache.add(rank_id)
+                        rank_defn_cache.add(cache_key)
 
                     youth_reqs = api.get_youth_rank_requirements(uid, rank_id)
                     rank_req_count += store_youth_rank_requirements(
@@ -611,6 +617,13 @@ def cmd_get_token(args):
         print(f"User ID: {user_id}")
 
 
+def cmd_serve(args):
+    from scouting_db.webserver import serve
+
+    db_path = args.db or str(DEFAULT_DB_PATH)
+    serve(db_path, port=args.port, open_browser=not args.no_browser)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Scouting Troop Analytics CLI",
@@ -662,6 +675,17 @@ def main():
         help="Filter by merit badge name (for mb-reqs)",
     )
 
+    p_serve = sub.add_parser(
+        "serve", help="Start the local web server (sync form + dashboard)"
+    )
+    p_serve.add_argument(
+        "--port", type=int, default=8765, help="Port to listen on (default: 8765)"
+    )
+    p_serve.add_argument(
+        "--no-browser", action="store_true",
+        help="Don't automatically open a browser window",
+    )
+
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
@@ -676,6 +700,7 @@ def main():
         "sync-scouts": cmd_sync_scouts,
         "discover": cmd_discover,
         "query": cmd_query,
+        "serve": cmd_serve,
     }
     commands[args.command](args)
 
